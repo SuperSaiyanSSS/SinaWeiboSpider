@@ -6,17 +6,63 @@ from bs4 import BeautifulSoup
 import re
 import requests
 from base import SinaBaseObject
-from sina_weibo import SinaWeibo
+import sina_weibo
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+pattern = re.compile(r'\d+')
 
 
 class SinaPeople(SinaBaseObject):
     """
     新浪微博的用户类
     """
-    def __init__(self, uid=None, href=None):
+    def __init__(self, uid=None, href=None, lazy=False):
+        """
+        <a1.sina_people.SinaPeople object at 0x0000000003791C88>
+        {
+            uid: 5501547091,
+            name: 助人为乐的英逸,
+            fans_count: 285,
+            follow_count: 1500,
+            weibo_count: 1335,
+            time_delay: 1,
+            birthday: 未知,
+            sex: 男,
+            location: 江西,
+            member_level: '',
+            required_weibo_count: 2,
+            required_member_count: 2,
+            href: http://weibo.cn/5501547091/follow,
+            fans_list: [
+                    {
+                        name: 03775177m,
+                        uid: 3874404440,
+                        fans_count: 9,
+                        is_v: False,
+                        href: http://weibo.cn/u/3874404440,
+                    },
+                     ....
+                       ]
+            follow_list: [
+                    {
+                        name: silent\u9ed8_7045,
+                        uid: 5534114512,
+                        fans_count: 12,
+                        is_v: False,
+                        href: http://weibo.cn/u/5534114512,
+                    },
+                    ....
+                        ]
+            weibo_list: [
+                        <a1.sina_weibo.SinaWeibo object at 0x0000000003920FD0>,
+                        <a1.sina_weibo.SinaWeibo object at 0x00000000039D38D0>,
+                        ....
+                        ]
+        :param uid:
+        :param href:
+        """
         super(SinaPeople, self).__init__()
         self.uid = str(uid)
         self.href = href
@@ -30,12 +76,64 @@ class SinaPeople(SinaBaseObject):
         self.follow_list = []
         self.fans_count = ''
         self.fans_list = []
+        self.is_V = False
+        self.uid = self.uid.strip('\n')
         if not self.href:
             self.href = 'http://weibo.cn/u/'+self.uid
         if not self.uid:
             self.uid = self.href.split('cn/')
+        if not lazy:
+            self.required_weibo_count = 30
+            self.required_member_count = 1
+            self.get_personal_information()
+            self.fans_list = self.get_fans_list()
+            self.follow_list = self.get_follow_list()
+            self.weibo_list = self.get_weibo_list()
 
-    def __get_member_list__(self, required_member_count=20, time_delay=0.2, target_member_type='fans'):
+    @property
+    def basic_url(self):
+        return 'http://weibo.cn/u/' + str(self.uid)
+
+    def get_personal_information(self):
+        """
+        注：新浪有奇怪的BUG 带cookies访问http://weibo.cn/3193031501/info这类个人资料url时，总是File not found
+            若不带cookies则不能访问该页
+            所以只能获取个人主页简单的性别和地点信息
+        :return:
+        """
+        requests_content = self.retry_requests(self.href)
+        try:
+            info_content = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.contents[0]
+        except AttributeError:
+            print(requests_content)
+            return False
+        # 此处split(' ')中的空格不是一般的空格 需要在原网页中复制
+        # 普通用户无图片标签
+        self.name = info_content.split(' ')[0].strip()
+        print(self.name)
+        try:
+            self.sex = info_content.split(' ')[1].split('/')[0].strip()
+            print(self.sex)
+            self.location = info_content.split(' ')[1].split('/')[1].strip()
+            print(self.name, self.sex, self.location)
+        except IndexError:
+            self.is_V = True
+            info2 = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.get_text()
+            self.sex = info2.split('/')[0].strip()[-1:].strip()
+            print(self.sex)
+            self.location = info2.split('/')[1].strip()[:3].strip()
+            print(self.name, self.sex, self.location)
+
+        # 获取该用户的微博数 关注数 粉丝数
+        self.weibo_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+                                          findAll('div', attrs={'class': 'tip2'})[0].get_text())[0])
+        self.follow_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+                                           findAll('div', attrs={'class': 'tip2'})[0].get_text())[1])
+        self.fans_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+                                         findAll('div', attrs={'class': 'tip2'})[0].get_text())[2])
+        print(self.weibo_count, self.follow_count, self.fans_count)
+
+    def __get_member_list__(self, target_member_type='fans'):
         """
         获取所指定的当前用户的关注/粉丝列表
         每个被关注者或粉丝的信息存储在dict中
@@ -46,6 +144,7 @@ class SinaPeople(SinaBaseObject):
 
         TODO: 获取人物基本信息
         """
+        required_member_count = self.required_member_count
         member_url = 'http://weibo.cn/' + str(self.uid) + '/' + str(target_member_type)
         self.href = member_url
         print(member_url)
@@ -56,7 +155,7 @@ class SinaPeople(SinaBaseObject):
         is_first = True
         while True:
 
-            tt.sleep(time_delay)
+            tt.sleep(self.time_delay)
             # 获取页面源码(bs4对象)
             requests_content = self.retry_requests(member_url, uid=self.uid)
 
@@ -90,11 +189,12 @@ class SinaPeople(SinaBaseObject):
                 member_list.append(member)
 
             # 若是第一页，则获取总页数
-            if is_first == True:
+            if is_first is True:
                 # 若发现‘x/y页’ 则有不止一页
                 if requests_content.find(attrs={'id': 'pagelist'}):
                     page_count = requests_content.find(attrs={'id': 'pagelist'}).form.div.contents[-1].strip()
                     page_count = page_count.split('/')[1]
+                    pattern = re.compile(r'\d+')
                     page_count = int(re.findall(pattern, page_count)[0])
                     print(page_count)
                 else:
@@ -105,11 +205,15 @@ class SinaPeople(SinaBaseObject):
             if now_page_count >= page_count:
                 break
 
-            member_url = 'http://weibo.cn/' + str(self.uid) + '/'+str(target_member_type)+'?page=' + str(now_page_count)
+            member_url = 'http://weibo.cn/' + str(self.uid)+'/'+str(target_member_type)+'?page=' + str(now_page_count)
+            print(member_url)
+            print(self.uid)
+            print(target_member_type)
+            print("以上")
 
         return member_list
 
-    def get_fans_list(self, required_member_count=20, time_delay=0.2):
+    def get_fans_list(self):
         """
         获取当前用户的粉丝列表
         :param required_member_count: 限定获取的数量
@@ -133,11 +237,11 @@ class SinaPeople(SinaBaseObject):
                 },
             ]
         """
-        self.fans_list = self.__get_member_list__(required_member_count=required_member_count, time_delay=time_delay,
-                                              target_member_type='fans')
+        required_member_count = self.required_member_count
+        self.fans_list = self.__get_member_list__(target_member_type='fans')
         return self.fans_list
 
-    def get_follow_list(self, required_member_count=20, time_delay=0.2):
+    def get_follow_list(self):
         """
         获取当前用户的关注列表
         :param required_member_count: 限定获取的数量
@@ -161,11 +265,10 @@ class SinaPeople(SinaBaseObject):
                 },
             ]
         """
-        self.follow_list = self.__get_member_list__(required_member_count=required_member_count, time_delay=time_delay,
-                                                target_member_type='follow')
+        self.follow_list = self.__get_member_list__(target_member_type='follow')
         return self.follow_list
 
-    def get_weibo_list(self, required_weibo_count=10, time_delay=0.2):
+    def get_weibo_list(self):
         """
         获取指定用户的微博
         :param required_weibo_count: 所需的微博条数
@@ -175,6 +278,7 @@ class SinaPeople(SinaBaseObject):
             [
                 {
                     'uid': 'EpO2KnAor',
+                    'is_repost': False,
                     'text': '物是人非.',
                     'attitude_count' : 0,
                     'repost_count': 7,
@@ -184,6 +288,7 @@ class SinaPeople(SinaBaseObject):
                 },
                 {
                     'uid': 'EAJwkph8X',
+                    'is_repost': False,
                     'text': '祝你生日快乐',
                     'attitude_count' : 0,
                     'repost_count': 0,
@@ -193,7 +298,8 @@ class SinaPeople(SinaBaseObject):
                 },
             ]
         """
-        weibo_url = 'http://weibo.cn/u/' + str(self.uid)
+        required_weibo_count = self.required_weibo_count
+        weibo_url = self.basic_url
         weibo_list = []
         weibo_count = 0
         page_count = 1
@@ -202,7 +308,7 @@ class SinaPeople(SinaBaseObject):
         pattern = re.compile(r'\d+')
         while True:
 
-            tt.sleep(time_delay)
+            tt.sleep(self.time_delay)
             # 获取页面源码(bs4对象)
             requests_content = self.retry_requests(weibo_url, uid=self.uid)
 
@@ -217,14 +323,49 @@ class SinaPeople(SinaBaseObject):
                         continue
                 except:
                     continue
-                weibo = SinaWeibo(uid=weibo_uid)
-                weibo.text = i.div.span.get_text()
+                weibo = sina_weibo.SinaWeibo(uid=weibo_uid, required_count=0)
+
+                # 检查是否为转发的微博
+                for c in i.div.find_all('span'):
+                    if str(c.attrs['class']) == "['cmt']":
+                        weibo.is_repost = True
+                if weibo.is_repost:
+                    weibo.text = i.div.find_all('span')[0].get_text()+i.div.find_all('span')[1].get_text()
+                else:
+                    weibo.text = i.div.span.get_text()[1:]
+
                 weibo.uid = weibo_uid
-                weibo.attitude_count = int(re.findall(pattern, i.div.find_all('a')[-4].get_text())[0])
-                weibo.repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
-                weibo.comment_count = int(re.findall(pattern, i.div.find_all('a')[-2].get_text())[0])
-                weibo.time = i.div.find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[0]
-                weibo.terminal_source = i.div.find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[1]
+              #  weibo.attitude_count = int(re.findall(pattern, i.div.find_all('a')[-4].get_text())[0])
+              #  weibo.repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
+
+                # 有的微博处html格式不对
+                try:
+                    weibo.attitude_count = int(re.findall(pattern, i.div.find_all('a')[-4].get_text())[0])
+                    weibo.repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
+                    weibo.comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-2].get_text())[0])
+                except IndexError:
+                    print(weibo_uid)
+                    print(weibo.author_uid)
+                    try:
+                        weibo.comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-3].get_text())[0])
+                        weibo.repost_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-4].get_text())[0])
+                        weibo.attitude_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-5].get_text())[0])
+                    except IndexError:
+                        weibo.attitude_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[0])
+                        weibo.repost_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[1])
+                        weibo.comment_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[2])
+                        print(weibo.attitude_count, weibo.repost_count, weibo.comment_count)
+                try:
+                    weibo.time = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[0]
+                    weibo.terminal_source = i.div.find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[1]
+                except IndexError:
+                    print(i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text())
+                    weibo.time = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[0]
+                    try:
+                        weibo.terminal_source = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[1]
+                    except IndexError:
+                        weibo.terminal_source = '暂无'
+                print(weibo.time, weibo.terminal_source)
                 # 计数器加一
                 weibo_count += 1
                 # 若超过了要求获取的用户数量，则返回
@@ -248,6 +389,6 @@ class SinaPeople(SinaBaseObject):
             if now_page_count >= page_count:
                 break
 
-            weibo_url = 'http://weibo.cn/u/' + str(self.uid) + '?page=' + str(page_count)
+            weibo_url = 'http://weibo.cn/u/' + str(self.uid) + '?page=' + str(now_page_count)
 
         return weibo_list

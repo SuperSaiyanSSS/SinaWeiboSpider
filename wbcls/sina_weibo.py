@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals, print_function
 import time as tt
-import pymongo
+import bs4
 from bs4 import BeautifulSoup
 import re
 import requests
@@ -12,12 +12,85 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+pattern = re.compile(r'\d+')
+
 
 class SinaWeibo(SinaBaseObject):
     """
     新浪微博的微博类
+    {
+        uid: F0Mg7a8Wh,
+        author_uid: rmrb,
+        is_repost: False,
+        href: http://weibo.cn/comment/F0Mg7a8Wh,
+        text: :【中国大学教学质量排行榜800强出炉！你的母校排多少？】近日，《2017中国大学评价研究报告》发布2017中国大学
+              教学质量排行榜。清华大学本科生和研究生教育教学和人才培养质量问鼎榜首，北大第2，复旦第3，南大第4，武大第5，
+              上海交大第6，浙大第7，人大第8，吉大第9，川大第10。戳↓你的学校第几名？ ​​​  [组图共9张]
+        time: 04月29日 12:58,
+        time_delay: 1,
+        author_name: 人民日报,
+        repost_count: 3910,
+        attitude_count: 3076,
+        comment_count: 3248,
+        repost_list:
+            [
+                {
+                    u'text': ':',
+                    u'name': u'\u56db\u5ddd\u5927\u5b66'
+                },
+                {
+                    u'text': ':27[\xe6\x91\x8a\xe6\x89\x8b][\xe5\xbf\x83] //',
+                    u'name': u'\u674e\u5199\u610f'},
+                {
+                    u'text': ':\xe5\xa4\xaa\xe6\x83\xa8\xe4\xba\x86\xef\xbc\x8c\xe5\x89\x8d56\
+                    xe4\xb8\xaa\xe9\x83\xbd\xe6\x98\xaf\xe4\xb8\x96\xe7\x95\x8c\xe7\x9f\xa5\xe5\x90\x8d... //',
+                    u'name': u'\u897f\u8d22\u975e\u5b98\u65b9\u65b0\u95fb\u4e2d\u5fc3'
+                },
+                ....
+            ]
+        comment_list:
+            [
+                {
+                    uid: C_4101856898497093,
+                    terminal_source: iPhone 6s,
+                    text: \u4eba\u6c11\u65e5\u62a5\u4e5f\u53d1\u8fd9\u79cd\u5546\u4e1a\u6027\u8d28\u7684\u5927\u5b66
+                        \u6392\u884c\u699c\u3002\u3002\u3002[\u62dc\u62dc][\u62dc\u62dc][\u62dc\u62dc]',
+                    time: 04\u670829\u65e5 13:05\xa0,
+                    attitude_count: 270,
+                    is_hot: True,
+                    name: M-never
+                },
+                ....
+            ]
+        hot_comment_list:
+            [
+                {
+                    uid: C_4101856898497093,
+                    terminal_source: iPhone 6s,
+                    text: \u4eba\u6c11\u65e5\u62a5\u4e5f\u53d1\u8fd9\u79cd\u5546\u4e1a\u6027\u8d28\u7684\u5927\u5b66
+                        \u6392\u884c\u699c\u3002\u3002\u3002[\u62dc\u62dc][\u62dc\u62dc][\u62dc\u62dc]',
+                    time: 04\u670829\u65e5 13:05\xa0,
+                    attitude_count: 270,
+                    is_hot: True,
+                    name: M-never
+                },
+                ....
+            ]
+        attitude_list:
+            [
+                {
+                    name: \u723d\u5cf0\u4e2b\u4e2b,
+                    time: 13\u5206\u949f\u524d
+                },
+                {
+                    name: \u8393\u5c7f,
+                    time: \u4eca\u5929 19:55
+                },
+                ....
+            ]
+
     """
-    def __init__(self, uid=None, text='', time='', required_count=0):
+    def __init__(self, uid=None, text='', time='', required_count=5):
         super(SinaWeibo, self).__init__()
         self.uid = uid
         self.href = 'http://weibo.cn/comment/'+uid
@@ -35,20 +108,21 @@ class SinaWeibo(SinaBaseObject):
         # 转发
         self.repost_count = 0
         self.repost_list = []
+        # 该微博是否为转发
+        self.is_repost = False
 
         self.text = text
         self.time = time
         self.terminal_source = ''
+        print("???")
         if required_count != 0:
             self.get_text()
-            self.comment_list = self.get_comment_list(required_comment_count=required_count)
-            self.attitude_list = self.get_attitude_list(required_attitude_count=required_count)
-            self.repost_list = self.get_repost_list(required_repost_count=required_count)
-
-    def set_attributes(self, comment_count=0, attitude_count=0, repost_count=0):
-        self.comment_count = comment_count
-        self.attitude_count = attitude_count
-        self.repost_count = repost_count
+            #self.comment_list = self.get_comment_list(required_comment_count=required_count)
+           # self.get_hot_comment_list()
+            #self.attitude_list = self.get_attitude_list(required_attitude_count=required_count)
+           # self.attitude_list = self.attitude_list[1:]
+           # self.repost_list = self.get_repost_list(required_repost_count=required_count)
+           # self.repost_list = self.repost_list[1:]
 
     def set_text(self, text):
         self.text = text
@@ -64,10 +138,37 @@ class SinaWeibo(SinaBaseObject):
         if self.text != '':
             return self.text
         else:
-            requests_content = self.retry_requests(self.href, uid=self.uid)
-            self.main_page_resource = requests_content
-            self.text = requests_content.find(attrs={'id': 'M_'}).div.span.get_text()
-            self.__get_author_data__()
+            _retry_count = 3
+            while _retry_count > 0:
+                requests_content = self.retry_requests('http://weibo.cn/repost/'+self.uid, uid=self.uid)
+                self.main_page_resource = requests_content
+                try:
+                    self.text = requests_content.find(attrs={'id': 'M_'}).div.span.get_text()
+                    self.__get_author_data__()
+                    _retry_count -= 1
+                    break
+                except AttributeError:
+                    _retry_count -= 1
+
+            # 微博属性（转发数、赞数、评论数）
+            repost_number_node = requests_content.find(attrs={'id': 'rt'})
+            try:
+                self.repost_count = int(re.findall(pattern, repost_number_node.get_text())[0])
+            except IndexError:
+                self.repost_count = 0
+            try:
+                comment_number_node = repost_number_node.next_sibling
+                self.comment_count = int(re.findall(pattern, comment_number_node.get_text())[0])
+            except IndexError:
+                self.comment_count = 0
+            try:
+                attitude_number_node = comment_number_node.next_sibling
+                self.attitude_count = int(re.findall(pattern, attitude_number_node.get_text())[0])
+            except IndexError:
+                self.attitude_count = 0
+
+            # 微博发表时间
+            #self.time = requests_content.find(attrs={'id': 'M_'}).findAll('div')[1].span.get_text()
             return self.text
 
     # 获取微博作者的昵称和uid
@@ -75,18 +176,15 @@ class SinaWeibo(SinaBaseObject):
         self.author_name = self.main_page_resource.find(attrs={'id': 'M_'}).div.a.get_text()
         self.author_uid = self.main_page_resource.find(attrs={'id': 'M_'}).div.a.attrs['href'].split('/')[-1]
 
-    def __get_attribute_list__(self, target_attribute_type, target_attribute_fuction, required_attribute_count=20,
-                               time_delay=0.2):
+    def __get_attribute_list__(self, target_attribute_type, target_attribute_fuction, required_attribute_count=8):
         """
 
         :param target_attribute_type:
         :param target_attribute_fuction:
         :param required_attribute_count:
-        :param time_delay:
         :return:
         """
         attribute_url = 'http://weibo.cn/' + str(target_attribute_type) + '/' + str(self.uid)
-        print(attribute_url)
         attribute_list = []
         attribute_count = 0
         page_count = 1
@@ -94,7 +192,8 @@ class SinaWeibo(SinaBaseObject):
         is_first = True
         pattern = re.compile(r'\d+')
         while True:
-            tt.sleep(time_delay)
+            print("现在是评论第一页")
+            tt.sleep(self.time_delay)
             # 获取页面源码(bs4对象)
             requests_content = self.retry_requests(attribute_url, uid=self.uid)
 
@@ -103,7 +202,7 @@ class SinaWeibo(SinaBaseObject):
             for i in unit_list:
                 # 调用具体函数提取内容
                 attribute = target_attribute_fuction(i)
-                if not attribute:
+                if attribute is False:
                     continue
                 # 计数器加一
                 attribute_count += 1
@@ -145,20 +244,19 @@ class SinaWeibo(SinaBaseObject):
         except:
             return False
         comment['name'] = unit.a.get_text()
+        comment['author_uid'] = str(str(unit.a.attrs['href']).split('/')[-1])
         # 有的用户是个性域名，不符合/u/‘uid’的特点，故同时存href
-        comment['people'] = sina_people.SinaPeople(uid=str(unit.a.attrs['href']).split('/')[-1],
-                                       href='http://http://weibo.cn'+str(unit.a.attrs['href']))
+      #  comment['people'] = sina_people.SinaPeople(uid=str(unit.a.attrs['href']).split('/')[-1],
+                               #        href='http://http://weibo.cn'+str(unit.a.attrs['href']))
         # 检查是否有“热门”标签
         try:
-            is_hot = unit.span.attrs['kt']
-            if is_hot:
+            if str(unit.span.attrs['class']) == "['kt']":
                 comment['is_hot'] = True
             else:
                 comment['is_hot'] = False
         except:
             comment['is_hot'] = False
         # 正则匹配获取评论的赞数
-        pattern = re.compile(r'\d+')
         comment['attitude_count'] = int(re.findall(pattern, unit.find_all('span', attrs={'class': 'cc'})[-2].get_text())
                                         [0])
         print(comment['name'])
@@ -171,7 +269,7 @@ class SinaWeibo(SinaBaseObject):
         comment['terminal_source'] = unit.find_all('span', attrs={'class': 'ct'})[-1].get_text().split('来自')[1]
         return comment
 
-    def get_comment_list(self, required_comment_count=5, time_delay=0.2):
+    def get_comment_list(self, required_comment_count):
         """
         :param required_comment_count: 指定获取的条数
         :param time_delay: 时间延迟
@@ -190,8 +288,8 @@ class SinaWeibo(SinaBaseObject):
                 },
             ]
         """
-        self.comment_list = self.__get_attribute_list__('comment', self.__get_comment_list__,
-                                    required_attribute_count=required_comment_count, time_delay=time_delay)
+        self.comment_list = self.__get_attribute_list__('comment', self.__get_comment_list__, required_attribute_count=
+                                                        required_comment_count)
         return self.comment_list
 
     # 获取热门评论
@@ -201,7 +299,6 @@ class SinaWeibo(SinaBaseObject):
                 self.hot_comment_list.append(i)
         return self.hot_comment_list
 
-
     @staticmethod
     def __get_attitude_list__(unit):
         attitude = {}
@@ -209,15 +306,15 @@ class SinaWeibo(SinaBaseObject):
         try:
             attitude['name'] = unit.a.get_text()
             attitude['time'] = unit.span.get_text()
-            attitude['people'] = SinaPeople(uid=str(unit.a.attrs['href']).split('u/')[1],
-                                            href='http://weibo.cn' + str(unit.a.attrs['href']))
-        except:
+           # attitude['people'] = SinaPeople(uid=str(unit.a.attrs['href']).split('/')[-1],
+                                           # href='http://weibo.cn' + str(unit.a.attrs['href']))
+        except AttributeError:
             return False
         return attitude
 
-    def get_attitude_list(self, required_attitude_count=5, time_delay=0.2):
+    def get_attitude_list(self, required_attitude_count=5):
         self.attitude_list = self.__get_attribute_list__('attitude', self.__get_attitude_list__,
-                                    required_attribute_count=required_attitude_count, time_delay=time_delay)
+                                                         required_attribute_count=required_attitude_count)
         return self.attitude_list
 
     @staticmethod
@@ -225,15 +322,17 @@ class SinaWeibo(SinaBaseObject):
         repost = {}
         try:
             repost['name'] = unit.a.get_text()
-            repost['text'] = unit.contents[1]
-            print(str(unit.contents[1]))
-            repost['people'] = SinaPeople(uid=unit.a.attrs['href'].split('u/')[1],
-                                          href='http://weibo.cn/'+unit.a.attrs['href'])
+            tmp_slibing = unit.a.next_sibling
+            while not isinstance(tmp_slibing, bs4.element.NavigableString):
+                tmp_slibing = tmp_slibing.next_sibling
+            repost['text'] = str(tmp_slibing)
+     #       repost['people'] = SinaPeople(uid=unit.a.attrs['href'].split('/')[-1],
+               #                           href='http://weibo.cn/'+unit.a.attrs['href'])
         except:
             return False
         return repost
 
-    def get_repost_list(self, required_repost_count=5, time_delay=0.2):
-        self.repost_list = self.__get_attribute_list__('repost', self.__get_repost_list__, required_attribute_count=5,
-                                                       time_delay=0.2)
+    def get_repost_list(self, required_repost_count=5):
+        self.repost_list = self.__get_attribute_list__('repost', self.__get_repost_list__,
+                                                       required_attribute_count=required_repost_count)
         return self.repost_list

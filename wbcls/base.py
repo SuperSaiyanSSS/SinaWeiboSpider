@@ -7,9 +7,12 @@ import time as tt
 from bs4 import BeautifulSoup
 import sys
 import re
+
 reload(sys)
 sys.path.append('../')
 sys.setdefaultencoding('utf-8')
+
+
 # headers_for_get = {
 # 'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 # 'Accept-Encoding':'gzip, deflate, sdch',
@@ -30,18 +33,19 @@ class SinaBaseObject(object):
     """
     # 静态变量cookies
     cookies = ''
+    headers_for_get = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, sdch',
+        'Accept-Language': 'zh-CN,zh;q=0.8',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'Host': 'weibo.cn',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36'
+    }
 
     def __init__(self):
-        self.headers_for_get = {
-            'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Encoding':'gzip, deflate, sdch',
-            'Accept-Language':'zh-CN,zh;q=0.8',
-            'Cache-Control':'max-age=0',
-            'Connection':'keep-alive',
-            'Host':'weibo.cn',
-            'Upgrade-Insecure-Requests':'1',
-            'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36'
-        }
+        self.time_delay = 11
 
     # 对requests.get()函数进行改进，增加重试和报错功能
     def retry_requests(self, url, uid=''):
@@ -55,15 +59,53 @@ class SinaBaseObject(object):
         retry_count = 3
         while retry_count != 0:
             try:
-                requests_content = requests.get(url, headers=self.headers_for_get, cookies=self.cookies, timeout=3).content
+                requests_get = requests.get(url, headers=self.headers_for_get, cookies=self.cookies, timeout=3)
+                requests_content = requests_get.content
+                # 加入了__T_WM的cookie项后仍然无法在wap版微博登录
+                # 只能采用网页版
+                # if self.flag == 0:
+                #     cookies = requests.utils.dict_from_cookiejar(self.cookies)
+                #     requests_get.cookies = requests.utils.dict_from_cookiejar(requests_get.cookies)
+                #     cookies = dict(cookies.items() + requests_get.cookies.items())
+                #     self.cookies = requests.utils.cookiejar_from_dict(cookies)
+                #     self.flag = 1
+                #     print(self.cookies)
+                print(url)
                 print(requests_content)
+                # 记录发起网络请求的url及时间
+                with open('log_url.txt', 'a') as f:
+                    f.write(str(url) + ' ' + str(tt.strftime("%Y-%m-%d %H:%M:%S", tt.localtime())) + '\n')
+
                 requests_content = BeautifulSoup(requests_content, "lxml")
-                # re_s = unicode(str(requests_content))
-                # re.match(u"[\u4e00-\u9fa5]+", re_s)
-                # if re.search(unicode('首页'), re_s) is not None:
-                #     raise Exception, "Cookie失效，获取页面失败！"
                 return requests_content
             except:
+                tt.sleep(3)
+                print("获取" + str(uid) + "页面时失败，正在重试。。。")
+            finally:
+                retry_count -= 1
+                if retry_count == 0:
+                    raise Exception, "重试次数已完，仍获取" + str(uid) + "的页面失败！"
+
+    @staticmethod
+    def retry_requests_static(url, headers={}, timeout=3):
+        """
+        :param url: 待爬取的链接
+        :param headers: 请求头
+        :param uid: 帖子或用户的uid值（str类型）
+        :return: requests_content 爬起的页面源码(bs4类型)
+        """
+        # 设置重试次数
+        retry_count = 3
+        while retry_count != 0:
+            try:
+                requests_get = requests.get(url, headers=headers, timeout=3)
+                print(url)
+                # 记录发起网络请求的url及时间
+                with open('log_static_url.txt', 'a') as f:
+                    f.write(str(url) + ' ' + str(tt.strftime("%Y-%m-%d %H:%M:%S", tt.localtime())) + '\n')
+                return requests_get
+            except:
+                tt.sleep(3)
                 print("获取" + str(uid) + "页面时失败，正在重试。。。")
             finally:
                 retry_count -= 1
