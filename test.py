@@ -6,12 +6,24 @@ sys.setdefaultencoding('utf-8')
 from wbcls import sina_people
 from wbcls import sina_weibo
 from wbcls import base
-
+from wbcls import sina_store
+from bs4 import BeautifulSoup
 import base64
 import requests
 import re
 import rsa
 import binascii
+try_headers = {
+'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+'Accept-Encoding':'gzip, deflate, sdch',
+'Accept-Language':'zh-CN,zh;q=0.8',
+'Cache-Control':'max-age=0',
+'Connection':'keep-alive',
+'Cookie':'SINAGLOBAL=9749994808807.969.1462031573715; UM_distinctid=15ba31e8f531d7-07c52349a-67151474-15f900-15ba31e8f543cf; UOR=v.baidu.com,widget.weibo.com,login.sina.com.cn; un=dd083764@163.com; wvr=6; SSOLoginState=1493290759; SCF=AjsEaVa0e8KjEg3yEjwEx270PLOpYvK-1BhV7AdkMSQglzpQYR4kh9QpdmBGwjflxudOsWcvwNjH44y5HkUaYEo.; SUB=_2A250BaKCDeThGeNH7FMX9CzJzjmIHXVXcpNKrDV8PUJbmtBeLVeikW9TBGBZrKdS00g7g8PZSM1sGVha8g..; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9W5uXfcJCAoMCAZgGpXYw6fj5JpX5o2p5NHD95Qf1KMpSoBESK-fWs4Dqcjyi--ciKL8iK.Ni--4iK.fi-isi--ci-zpiKLsPNifIsip; SUHB=0nl-AZgzIqF98d; ALF=1524799399; YF-Ugrow-G0=57484c7c1ded49566c905773d5d00f82; YF-V5-G0=d22a701aae075ca04c11f0ef68835839; _s_tentry=-; Apache=4257309376262.1284.1493291763610; ULV=1493291763620:62:18:7:4257309376262.1284.1493291763610:1493262270015; YF-Page-G0=b98b45d9bba85e843a07e69c0880151a; WBStorage=02e13baf68409715|undefined',
+'Host':'weibo.com',
+'Upgrade-Insecure-Requests':'1',
+'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36'
+}
 
 def Get_cookies():
     '''登陆新浪微博，获取登陆后的Cookie，返回到变量cookies中'''
@@ -25,7 +37,7 @@ def Get_cookies():
     nonce = re.findall('"nonce":"(.*?)"',html,re.S)[0]
     pubkey = re.findall('"pubkey":"(.*?)"',html,re.S)[0]
     rsakv = re.findall('"rsakv":"(.*?)"',html,re.S)[0]
-
+    print(servertime, nonce, pubkey, rsakv)
     username = base64.b64encode(username) #加密用户名
     rsaPublickey = int(pubkey, 16)
     key = rsa.PublicKey(rsaPublickey, 65537) #创建公钥
@@ -77,43 +89,110 @@ def get_myuid(cookies):
     return myuid,myname
 
 
+def get_weibo(uid,cookies,page):
+    '''获取前page页的微博'''
+
+    url = 'http://weibo.com/'+uid+'/profile'
+    my_weibo = []
+    for p in range(1,page+1):
+        #新浪微博每一页信息是异步加载的，分三次加载
+        for pb in range(-1,2):
+            data = {'pagebar':str(pb),
+                    'pre_page':str(p),
+                    'page':str(p),
+                    }
+            if p == 1:
+                if pb == -1:
+                    html = requests.get(url,cookies=cookies).content
+                else:
+                    html = requests.get(url,cookies=cookies,params=data).content
+            else:
+                html = requests.get(url,cookies=cookies,params=data).content
+
+            hlist = html.split('node-type=\\"feed_list_content\\"')[1:]
+            for i in hlist:
+                i = i.split('<\/div>')[0]
+                s = re.findall('>(.*?)<',i)
+                weibo = ''
+                for j in s:
+                    weibo = weibo + j.strip('\\n /\\')
+                if len(weibo) != 0:
+                    my_weibo.append(weibo)
+    return my_weibo
+
+def get_follow(myuid,cookies):
+
+    '''获取微博关注用户的uid与用户名'''
+    url = 'http://weibo.com/' + myuid + '/follow'
+    html = requests.get(url,cookies=cookies).content
+
+    c = html.find('member_ul clearfix')-13
+    html = html[c:]
+    u = re.findall(r'[uid=]{4}([0-9]+)[&nick=]{6}(.*?)\\"',html)
+
+    user_id = []
+    uname = []
+    for i in u:
+        user_id.append(i[0]) #把uid储存到列表user_id中
+        uname.append(i[1])   #把用户名储存到列表uname中
+    return user_id,uname
+
+
+def pass_cookies():
+    return headers_2
+
+headers_2 = {
+'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+'Accept-Encoding':'gzip, deflate, sdch',
+'Accept-Language':'zh-CN,zh;q=0.8',
+'Cache-Control':'max-age=0',
+'Connection':'keep-alive',
+'Cookie': '_T_WM=0ff248d78f4984aa135c5b2e53c11079; ALF=1496318146; SCF=AjsEaVa0e8KjEg3yEjwEx270PLOpYvK-1BhV7AdkMSQgcvtxS-8hSqQgtOi37X15usxPejtU-Q-P-S5eLluIwnI.; SUB=_2A250DARDDeThGeBP4lQW-CbFyj6IHXVXDqwLrDV6PUJbktBeLWjgkW0mRdcHIzWZqvsMrQuwo8DpPQmeXg..; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WWC9U1RTKpYdAAz2GZeMbFX5JpX5o2p5NHD95QceK.cS0nR1K2EWs4DqcjSH.ieC0-R-.R7HK.R1Btt; SUHB=0ElKxu4GSlYMWP; SSOLoginState=1493726227',
+'Host':'weibo.cn',
+'Upgrade-Insecure-Requests':'1',
+'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36'
+}
+
 if __name__ == '__main__':
-    cookies = Get_cookies()
-    print cookies
-    print type(cookies)
-    base.SinaBaseObject.cookies = cookies
-    uid,myname = get_myuid(cookies)
-    print 1111111111111111111111111111111
-    print myname
-    print 1111111111111111111111111111111
-    # a = SinaPeople(uid =5977796987)
-    # hehe = a.get_fans_list(required_member_count=15)
-    # #a.get_fans_list()
-    # print(len(hehe))
-    # b = SinaWeibo(uid='ECxqn6uA0')
-    # a = b.get_repost_list(required_repost_count=10)
-    # print(len(a))
-    # print(a[-1]['time'])
-    #print(a[-1]['terminal_source'])
-    # p = sina_people.SinaPeople(uid=5977796987)
-    # print("----------")
-    # a = p.get_weibo_list(required_weibo_count=2)
-    # for i in a:
-    #     print("-------------")
-    #     print(i.uid)
-    #     b = i.uid
-    #     print("---------------")
-    #
-   # init_json_file()
-   # Get_cookies()
-    c = sina_weibo.SinaWeibo(uid = 'EFX6orYJv', required_count=5)
-    print(1111111111111111)
-    print(c.comment_count)
-    # print(c.comment_list)
-    # print(c.author_uid)
-    print(c.author_name)
-    print(1111111111111111)
-    # print(c.text)
-    # print(c.attitude_count)
-    # print(c.attitude_list)
-    #pass
+    """
+    使用说明：把上面的headers_2换成自己的即可
+    方法： 提前用自己的账号在本机登录新浪微博
+        在chrome浏览器中F12，点击Network选项
+        在浏览器的url栏中输入weibo.cn
+        此时可以抓到目标地址为weibo.cn的数据包
+        复制粘贴Network框中的headers值粘贴到headers_2中
+    警告:  若用于商业用途请提前联系 3233069648@qq.com
+        这是测试版 所以设置的延迟较高，避免新浪监测
+        持续改进中。。。
+        后期会加入cookie池 代理池
+        机器学习判别水军用户等
+        并尝试破解新浪.cn的登录
+        喜欢的就点个Star吧~！
+                                     2017/5/4
+    """
+    # cookies = Get_cookies()
+    # print cookies
+    # print type(cookies)
+    # myuid,myname = get_myuid(cookies)
+    # print 1111111111111111111111111111111
+    # print myname
+    # print 1111111111111111111111111111111
+
+    # 这是网页版的 暂时不作
+    # base.SinaBaseObject.cookies = cookies
+    # a = requests.get('http://weibo.cn/u/5195713909', cookies=cookies)
+    # print a.content
+
+    #这是wap版的
+    if 1:
+        dic_c = {}
+        str_c = headers_2['Cookie']
+        for i in str_c.split('; '):
+            dic_c[i.split('=')[0]] = i.split('=')[1]
+        cookies2 = requests.utils.cookiejar_from_dict(dic_c)
+        base.SinaBaseObject.cookies = cookies2
+    pe = sina_people.SinaPeople('6021561452')
+    s = sina_store.SinaStore()
+    s.store_in_mongodb(pe)
+
+
