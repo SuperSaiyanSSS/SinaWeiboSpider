@@ -6,8 +6,9 @@
     SinaWeibo类仍可以正常使用（因其不需登录即可查看，新浪的BUG）
     
     解决方法：
-    1，手动利用chrome工具获取极简版登录后的cookies，将base.SinaBaseObject中的cookies改成此值即可
+       手动利用chrome工具获取极简版登录后的cookies，将base.SinaBaseObject中的cookies改成此值即可
        优点：由于是极简版，速度快
        缺点：需要手动，每天更新cookies
-       
-    2，改用SinaWeiboSpider_super项目
+
+过几天再写使用说明 先把机器学习鉴别水军的部分代码放上
+
