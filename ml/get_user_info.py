@@ -8,27 +8,17 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 import datetime
 import difflib
-from wbcls import sina_people
-from wbcls import sina_weibo
-from wbcls import base
-from wbcls import sina_store
+from a1 import sina_people
+from a1 import sina_weibo
+from a1 import base
+from a1 import test1
+from a1 import sina_store
 from bs4 import BeautifulSoup
 import requests
 import time as tt
 import pymongo
 import re
 
-headers_2 = {
-'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-'Accept-Encoding':'gzip, deflate, sdch',
-'Accept-Language':'zh-CN,zh;q=0.8',
-'Cache-Control':'max-age=0',
-'Connection':'keep-alive',
-'Cookie': '_T_WM=0ff248d78f4984aa135c5b2e53c11079; ALF=1496365469; SCF=AjsEaVa0e8KjEg3yEjwEx270PLOpYvK-1BhV7AdkMSQgoOGzrEhIkU9hHBvEQ4MOsG9zWelhH5rd4R7MZHAripw.; SUB=_2A250DVyHDeRhGeNH7FsX9i3Kwj6IHXVXDmTPrDV6PUJbktANLU2nkW1V2Muz-5KWd3bwYI4AAF7Nuwd5EQ..; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9W5qWucVDNmW._yvhhFKl04p5JpX5o2p5NHD95Qf1KM4Soq0So.EWs4Dqc_Ii--4iKL2i-27i--Ri-z7i-zpi--fiK.7iKyhi--fi-82i-2ci--fi-z7iKysi--RiK.4i-i8i--Ni-zpi-z0i--NiKnRi-zpi--fiK.RiKLWi--NiK.piKLs; SUHB=0k1CfKnG5b71Qe; SSOLoginState=1493773527',
-'Host':'weibo.cn',
-'Upgrade-Insecure-Requests':'1',
-'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36'
-}
 
 headers_for_baidu = {
 'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -208,6 +198,9 @@ def get_similarity_of_content(person_dict):
             continue
         else:
             total_count += 1
+
+            if total_count >= 15:
+                break
             copy_test_1 = False
             copy_test_2 = False
 
@@ -317,7 +310,6 @@ def __store_human_feature_vector__(feature_vector):
         s.store_in_mongodb(feature_vector)
 
 
-
 def store_human_feature_vector(sina_store_object):
     sina_store_object.weibo_table = sina_store_object.db['human_personal_info']
     # 获取返回的生成器
@@ -374,7 +366,6 @@ def __store_machine_feature_vector__(feature_vector):
         s.store_in_mongodb(feature_vector)
 
 
-
 def store_machine_feature_vector(sina_store_object):
     sina_store_object.weibo_table = sina_store_object.db['machine_personal_info']
     # 获取返回的生成器
@@ -403,25 +394,26 @@ def store_machine_feature_vector(sina_store_object):
             feature_vector['uid'] = str(person_dict['uid'])
             feature_vector['platform'] = platform
             feature_vector['reputation'] = reputation
-            feature_vector['human_or_machine'] = 1
+            feature_vector['human_or_machine'] = 0
             item_count += 1
             print("现在抽取到第"+str(item_count)+"个用户！！")
-            __store_human_feature_vector__(feature_vector)
+            __store_machine_feature_vector__(feature_vector)
         except StopIteration:
             print("机器用户已提取特征向量完毕！")
             break
 
 
 if __name__ == '__main__':
-    dic_c = {}
-    str_c = headers_2['Cookie']
-    for i in str_c.split('; '):
-        dic_c[i.split('=')[0]] = i.split('=')[1]
-    cookies2 = requests.utils.cookiejar_from_dict(dic_c)
-    base.SinaBaseObject.cookies = cookies2
+    """
+    从mongodb中获取human和machine的信息，
+    并计算其信息熵、相似度、信誉度等特征
+    并将特征存入mongodb
 
+    示例：
     s = sina_store.SinaStore()
+    store_human_feature_vector(s)
     store_machine_feature_vector(s)
+    """
 
 
 
