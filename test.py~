@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 import json
 import sys
@@ -166,7 +167,7 @@ if __name__ == '__main__':
     # print(a.content)
     # print(a.cookies)
     # print(a.headers)
-
+    # print(44444444444444444444)
     # headers_3['Referer'] = 'http://login.sina.com.cn/sso/login.php?url=http%3A%2F%2Fweibo.cn%2F&_rand=1493689476.0249&gateway=1&service=sinawap&entry=sinawap&useticket=1&returntype=META&sudaref=&_client_version=0.6.24'
     # b = s.get('http://weibo.cn/u/5195713909', allow_redirects=True)
     # print(b.content)
@@ -250,7 +251,25 @@ if __name__ == '__main__':
    #  # print(c.text)
    #  print(b.attitude_count)
     # print(c.attitude_list)
-
+    #pass
+    # d_cookie = requests.get('http://weibo.cn/comment/ECvINo9oQ', cookies=cookies).cookies
+    # base.SinaBaseObject.cookies = d_cookie
+    # print cookies
+    # print d_cookie
+   # cookie_str = ''
+    #base.SinaBaseObject.headers_for_get['Cookie'] = cookie_str
+   # a = sina_people.SinaPeople(uid='5503147448')
+    #print(a.cookies)
+    # cookie_dict = requests.utils.dict_from_cookiejar(c.cookies)
+    # for key, value in cookie_dict.items():
+    #     cookie_str += key+'='+value+';'
+    # print 22222222222
+    # print(c.cookies)
+    # print cookie_str
+    # print 999999999999999999999999999999999999999999999
+    # base.SinaBaseObject.headers_for_get['Cookie'] = cookie_str
+    # print base.SinaBaseObject.headers_for_get
+   # a.get_personal_information()
 =======
 # -*- coding: utf-8 -*-
 import json
@@ -415,7 +434,7 @@ if __name__ == '__main__':
         在浏览器的url栏中输入weibo.cn
         此时可以抓到目标地址为weibo.cn的数据包
         复制粘贴Network框中的headers值粘贴到headers_2中
-    警告:  
+    警告:  若用于商业用途请提前联系 3233069648@qq.com
         这是测试版 所以设置的延迟较高，避免新浪监测
         持续改进中。。。
         后期会加入cookie池 代理池
@@ -449,3 +468,5 @@ if __name__ == '__main__':
     s = sina_store.SinaStore()
     s.store_in_mongodb(pe)
 
+
+>>>>>>> dc68cd2a148a888e7b401e4472f276d6dedd779c
