@@ -10,8 +10,8 @@ import pymongo
 import sklearn
 import sys
 sys.path.append("..")
-from wbcls import base
-from wbcls import sina_store
+from a1 import base
+from a1 import sina_store
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
