@@ -72,6 +72,7 @@ class SinaBaseObject(object):
                 #     print(self.cookies)
                 print(url)
                 print(requests_content)
+                print(requests_get.status_code)
                 # 记录发起网络请求的url及时间
                 with open('log_url.txt', 'a') as f:
                     f.write(str(url) + ' ' + str(tt.strftime("%Y-%m-%d %H:%M:%S", tt.localtime())) + '\n')
@@ -81,6 +82,7 @@ class SinaBaseObject(object):
             except:
                 tt.sleep(3)
                 print("获取" + str(uid) + "页面时失败，正在重试。。。")
+                print(requests_get.status_code)
             finally:
                 retry_count -= 1
                 if retry_count == 0:
