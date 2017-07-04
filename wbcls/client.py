@@ -64,17 +64,16 @@ class WeiboClient(object):
             6. client.repost()
             参数均为对应的id，返回对应的类的实例。
         """
-        def getter(id):
-            print(id)
+        # 回调对应模块的构造函数
+        def callback_getattr(id):
             return getattr(module, item)(id, session=self._session)
-        attr_list = ['me', 'weibo', 'people', 'comment', 'attitude', 'repost']
+
+        attr_list = ['me', 'sina_weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:
             module = importlib.import_module(item.lower(), 'wbcls')
-            print(type(module))
-            print(module)
-            return getter
+            return callback_getattr
 
 
 if __name__ == '__main__':
     a = WeiboClient(cookies='as=12')
-    a.SinaWeibo('666')
+    a.sina_weibo('666')

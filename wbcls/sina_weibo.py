@@ -15,7 +15,7 @@ sys.setdefaultencoding('utf-8')
 pattern = re.compile(r'\d+')
 
 
-class SinaWeibo(SinaBaseObject):
+class sina_weibo(SinaBaseObject):
     """
     新浪微博的微博类
     {
@@ -160,6 +160,7 @@ class SinaWeibo(SinaBaseObject):
                     _retry_count -= 1
 
             # 微博属性（转发数、赞数、评论数）
+            # wap版的此内容格式特别不规范
             repost_number_node = requests_content.find(attrs={'id': 'rt'})
             try:
                 self.repost_count = int(re.findall(pattern, repost_number_node.get_text())[0])
