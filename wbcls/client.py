@@ -66,7 +66,8 @@ class WeiboClient(object):
         """
         # 回调对应模块的构造函数
         def callback_getattr(id):
-            return getattr(module, item)(id, session=self._session)
+            # 类名第一个字母大写
+            return getattr(module, item.capitalize())(id, session=self._session)
 
         attr_list = ['me', 'sina_weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:

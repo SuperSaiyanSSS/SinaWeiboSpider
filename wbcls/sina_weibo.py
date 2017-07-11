@@ -11,6 +11,7 @@ import sina_people
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
+from utils import *
 
 pattern = re.compile(r'\d+')
 
@@ -90,9 +91,11 @@ class sina_weibo(SinaBaseObject):
             ]
 
     """
-    def __init__(self, uid=None, text='', time='', required_count=0):
-        super(SinaWeibo, self).__init__()
+    def __init__(self, session=None, uid=None, cache={}, text='', time='', required_count=0):
+        super(sina_weibo, self).__init__()
         self.uid = uid
+        self._cache=cache
+        self._session = session
         self.href = 'http://weibo.cn/comment/'+str(uid)
         self.main_page_resource = ''
         # 作者信息
@@ -139,6 +142,20 @@ class sina_weibo(SinaBaseObject):
     def set_time(self, time):
         self.time = time
 
+    @property
+    @normal_attr()
+    def html(self):
+        return self._session.get('http://weibo.cn/repost/' + self.uid).content
+
+    @property
+    @normal_attr()
+    def _soup(self):
+        return BeautifulSoup(self.html, "lxml")
+
+    def haha(self):
+        print(self._soup)
+        print(222)
+
     def get_text(self):
         """
         获取微博内容
@@ -149,8 +166,10 @@ class sina_weibo(SinaBaseObject):
         else:
             _retry_count = 3
             while _retry_count > 0:
-                requests_content = self.retry_requests('http://weibo.cn/repost/'+self.uid, uid=self.uid)
+                requests_content = self._soup
                 self.main_page_resource = requests_content
+                print(requests_content)
+                print("测试session的get方法")
                 try:
                     self.text = requests_content.find(attrs={'id': 'M_'}).div.span.get_text()
                     self.__get_author_data__()
