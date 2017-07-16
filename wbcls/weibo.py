@@ -1,17 +1,16 @@
 # coding=utf-8
-
 from __future__ import unicode_literals, print_function
 import time as tt
 import bs4
 from bs4 import BeautifulSoup
 import re
 import requests
+from utils import *
 from base import SinaBaseObject
 import sys
 import people
 reload(sys)
 sys.setdefaultencoding('utf-8')
-from utils import *
 
 pattern = re.compile(r'\d+')
 
