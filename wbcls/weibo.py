@@ -95,23 +95,19 @@ class Weibo(SinaBaseObject):
         super(Weibo, self).__init__()
         self.uid = id
         self._cache = cache
-        self._session = session
+    #    self._session = session
         self.href = 'http://weibo.cn/comment/'+str(id)
         self.main_page_resource = ''
-        self.__get_author_data__()
+        self._get_author_data()
         # 作者信息
      #   self.author_name = ''
     #    self.author_uid = ''
         # 评论
 #        self.comment_count = 0
-        self.comment_list = []
-        self.hot_comment_list = []
         # 赞
    #     self.attitude_count = 0
-        self.attitude_list = []
         # 转发
      #   self.repost_count = 0
-        self.repost_list = []
         # 该微博是否为转发
         self.is_repost = False
         # 该微博转发的微博的信息
@@ -119,24 +115,11 @@ class Weibo(SinaBaseObject):
         self.repost_author_uid = ''
         self.repost_text = ''
         self.repost_reposted_count = 0
-
-#        self.text = text
-  #      self.time = time
         self.terminal_source = ''
         self.location = ''
 
         # 威胁程度
         self.threatened = 0
-
-        if required_count != 0:
-            self.get_text()
-            #self.comment_list = self.get_comment_list(required_comment_count=required_count)
-           # self.get_hot_comment_list()
-            #self.attitude_list = self.get_attitude_list(required_attitude_count=required_count)
-           # self.attitude_list = self.attitude_list[1:]
-           # self.repost_list = self.get_repost_list(required_repost_count=required_count)
-           # self.repost_list = self.repost_list[1:]
-
 
     @property
     @normal_attr()
@@ -255,7 +238,7 @@ class Weibo(SinaBaseObject):
     #         return self.text
 
     # 获取微博作者的昵称和uid
-    def __get_author_data__(self):
+    def _get_author_data(self):
         self.author_name = self._soup.find(attrs={'id': 'M_'}).div.a.get_text()
         self._cache.setdefault('author_name', self.author_name)
         self.author_uid = self._soup.find(attrs={'id': 'M_'}).div.a.attrs['href'].split('/')[-1]
@@ -366,7 +349,7 @@ class Weibo(SinaBaseObject):
                             str(now_page_count)
 
     @staticmethod
-    def __get_comment_list__(unit):
+    def _get_comment_list(unit):
         comment = {}
         # 若有id属性且id值以C开头，则证明是评论
         try:
@@ -422,22 +405,11 @@ class Weibo(SinaBaseObject):
                 },
             ]
         """
-        for x in self._get_attribute_item('comment', self.__get_comment_list__):
+        for x in self._get_attribute_item('comment', self._get_comment_list):
             yield x
 
-        #self.comment_list = self.__get_attribute_list__('comment', self.__get_comment_list__, required_attribute_count=
-#                                                        required_comment_count)
-     #   return self.comment_list
-
-    # # 获取热门评论
-    # def get_hot_comment_list(self):
-    #     for i in self.comment_list:
-    #         if i['is_hot']:
-    #             self.hot_comment_list.append(i)
-    #     return self.hot_comment_list
-
     @staticmethod
-    def __get_attitude_list__(unit):
+    def _get_attitude_list(unit):
         attitude = {}
         # 若有a标签则为点赞的unit
         try:
@@ -449,13 +421,13 @@ class Weibo(SinaBaseObject):
             return False
         return attitude
 
-    def get_attitude_list(self, required_attitude_count=5):
-        self.attitude_list = self.__get_attribute_list__('attitude', self.__get_attitude_list__,
-                                                         required_attribute_count=required_attitude_count)
-        return self.attitude_list
+    @property
+    def attitude(self):
+        for x in self._get_attribute_item('attitude', self._get_attitude_list):
+            yield x
 
     @staticmethod
-    def __get_repost_list__(unit):
+    def _get_repost_list(unit):
         repost = {}
         try:
             repost['name'] = unit.a.get_text()
@@ -465,14 +437,15 @@ class Weibo(SinaBaseObject):
             repost['text'] = str(tmp_slibing)
      #       repost['people'] = SinaPeople(uid=unit.a.attrs['href'].split('/')[-1],
                #                           href='http://weibo.cn/'+unit.a.attrs['href'])
-        except:
+        except AttributeError:
             return False
         return repost
 
-    def get_repost_list(self, required_repost_count=5):
-        self.repost_list = self.__get_attribute_list__('repost', self.__get_repost_list__,
-                                                       required_attribute_count=required_repost_count)
-        return self.repost_list
+    @property
+    def repost(self):
+        for x in self._get_attribute_item('repost', self._get_repost_list):
+            yield x
+
 
 if __name__ == '__main__':
     def a():

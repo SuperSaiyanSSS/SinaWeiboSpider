@@ -6,6 +6,7 @@ import os
 import importlib
 import people
 import weibo
+import base
 
 
 class WeiboClient(object):
@@ -67,6 +68,8 @@ class WeiboClient(object):
             参数均为对应的id，返回对应的类的实例。
         """
         # 回调对应模块的构造函数
+        base.SinaBaseObject._session = self._session
+
         def callback_getattr(id):
             # 类名第一个字母大写
             return getattr(module, item.capitalize())(id, session=self._session)

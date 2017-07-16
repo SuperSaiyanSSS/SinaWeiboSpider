@@ -64,10 +64,14 @@ def other_obj(class_name=None, name_in_json=None, module_filename=None):
             obj_cls = get_class_from_name(cls_name, module_filename)
 
             request_obj = func(self, *args, **kwargs)
+     #       print(111111111111)
+    #        print(request_obj)
 
             if request_obj is None:
                 if name == 'people':
-                    return obj_cls(uid=self.author_uid, cache={'name': self.author_name})
+                    return obj_cls(self.author_uid, cache={'name': self.author_name})
+            # if name == 'weibo':
+            #     return obj_cls(uid=self.now_weibo_uid, cache=self.now_weibo_cache)
             return request_obj
 
         return inner

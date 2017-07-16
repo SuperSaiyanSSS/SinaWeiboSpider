@@ -2,8 +2,7 @@
 from __future__ import unicode_literals, print_function
 import pymongo
 from base import SinaBaseObject
-import sina_weibo
-import sina_people
+import people
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
