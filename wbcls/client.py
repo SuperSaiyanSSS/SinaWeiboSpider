@@ -4,6 +4,8 @@ import requests
 from settings import *
 import os
 import importlib
+import people
+import weibo
 
 
 class WeiboClient(object):
@@ -68,10 +70,10 @@ class WeiboClient(object):
         def callback_getattr(id):
             # 类名第一个字母大写
             return getattr(module, item.capitalize())(id, session=self._session)
-
-        attr_list = ['me', 'sina_weibo', 'people', 'comment', 'attitude', 'repost']
+        attr_list = ['me', 'weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:
-            module = importlib.import_module(item.lower(), 'wbcls')
+            module = importlib.import_module('.'+item.lower(), 'wbcls')
+          #  print(module)
             return callback_getattr
 
 

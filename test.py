@@ -3,7 +3,7 @@ import json
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-from wbcls import sina_people
+from wbcls import people
 from wbcls import sina_weibo
 from wbcls import base
 from wbcls import sina_store
@@ -25,12 +25,27 @@ if __name__ == '__main__':
     # print(a.content)
     #pe = sina_people.SinaPeople('1737449733')
     pe0 = client.WeiboClient(cookies=cookies)
-    a = pe0._session
-    pe2 = sina_weibo.sina_weibo(uid='FbVMx8Mtd', session=a)
+   # ri = pe0.sina_weibo()
+  #  a = pe0._session
+    pe2 = pe0.Weibo('F36Tkz299')
+  #  pe2 = sina_weibo.sina_weibo(uid='FbVMx8Mtd', session=a)
+    pe3 = pe2._session.get('https://weibo.cn/u/1116150122')
+    print(pe3)
+    print(pe3.content)
     #pe = sina_people.SinaPeople('6021561452')
   #  print(pe2.get_text())
     print(444)
-    print(pe2.get_text())
+  #  print(pe2.get_text())
+    print(pe2.repost_count)
+    print(pe2.attitude_count)
+    print("评论数量")
+    print(pe2.comment_count)
+    print(pe2.author)
+    print(pe2.time)
+    print(pe2.author_name)
+    for i,j in zip(pe2.comment,range(3)):
+        print(i,j)
+
 
 
 

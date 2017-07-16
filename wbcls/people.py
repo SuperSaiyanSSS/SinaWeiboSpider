@@ -6,19 +6,17 @@ from bs4 import BeautifulSoup
 import re
 import requests
 from base import SinaBaseObject
-import sina_weibo
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
 pattern = re.compile(r'\d+')
 
 
-class SinaPeople(SinaBaseObject):
+class People(SinaBaseObject):
     """
     新浪微博的用户类
     """
-    def __init__(self, uid=None, href=None, lazy=False):
+    def __init__(self, uid=None, href=None, lazy=True, cache={}):
         """
         <a1.sina_people.SinaPeople object at 0x0000000003791C88>
         {
@@ -63,7 +61,7 @@ class SinaPeople(SinaBaseObject):
         :param uid:
         :param href:
         """
-        super(SinaPeople, self).__init__()
+        super(People, self).__init__()
         self.uid = str(uid)
         self.href = href
         self.name = ''
