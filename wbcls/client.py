@@ -1,11 +1,9 @@
 # coding:utf-8
 from __future__ import unicode_literals, print_function
 import requests
-from settings import *
+from utils import *
 import os
 import importlib
-import people
-import weibo
 import base
 
 
@@ -76,7 +74,6 @@ class WeiboClient(object):
         attr_list = ['me', 'weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:
             module = importlib.import_module('.'+item.lower(), 'wbcls')
-          #  print(module)
             return callback_getattr
 
 

@@ -455,8 +455,6 @@ class People(SinaBaseObject):
         """
 
         weibo_url = self.basic_url
-        weibo_list = []
-        weibo_count = 0
         page_count = 1
         now_page_count = 1
         is_first = True
@@ -477,20 +475,19 @@ class People(SinaBaseObject):
                         continue
                 except:
                     continue
-           # #  #  weibo = sina_weibo.SinaWeibo(uid=weibo_uid, required_count=0)
 
                 # 检查是否为转发的微博
-                for c in i.div.find_all('span'):
-                    if str(c.attrs['class']) == "['cmt']":
-                        is_repost = True
+                if len(i.div.find_all('span')) >= 2:
+                    is_repost = True
+                else:
+                    is_repost = False
+                # for c in i.div.find_all('span'):
+                #     if str(c.attrs['class']) == "['cmt']":
+                #         is_repost = True
                 if is_repost:
                     text = i.div.find_all('span')[0].get_text()+i.div.find_all('span')[1].get_text()
                 else:
-                    text = i.div.span.get_text()[1:]
-
-        #  # #     weibo.uid = weibo_uid
-              #  weibo.attitude_count = int(re.findall(pattern, i.div.find_all('a')[-4].get_text())[0])
-              #  weibo.repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
+                    text = i.div.span.get_text()
 
                 # 有的微博处html格式不对
                 try:
@@ -534,6 +531,7 @@ class People(SinaBaseObject):
                 self.now_weibo_cache = weibo_cache
                 self.now_weibo_uid = weibo_uid
                 yield weibo.Weibo(id=weibo_uid, cache=weibo_cache)
+            is_repost = False
 
             # 若是第一页，则获取总页数
             if is_first:
@@ -548,11 +546,10 @@ class People(SinaBaseObject):
                 is_first = False
 
             now_page_count += 1
-            if now_page_count >= page_count:
+            if now_page_count > page_count:
                 return
 
             weibo_url = 'http://weibo.cn/u/' + str(self.uid) + '?page=' + str(now_page_count)
-
 
     def get_weibo_list(self):
         """
@@ -672,7 +669,7 @@ class People(SinaBaseObject):
                 is_first = False
 
             now_page_count += 1
-            if now_page_count >= page_count:
+            if now_page_count > page_count:
                 break
 
             weibo_url = 'http://weibo.cn/u/' + str(self.uid) + '?page=' + str(now_page_count)
