@@ -8,10 +8,6 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 sys.path.append("..")
-from a1 import base
-from a1 import sina_store
-from a1 import sina_weibo
-from a1 import sina_people
 import random
 import realtime_user_relationship
 import fenci
@@ -156,50 +152,53 @@ class RealtimeRandomWeibo(object):
         count = 0
         for item in requests_dict['data']:
 
-            weibo = sina_weibo.SinaWeibo()
+            weibo = {}
             try:
-                weibo.text = str(item['mblog']['text'])
-                print(weibo.text)
-                weibo.uid = str(item['from']['url']).split('/')[-1]
-                weibo.time = str(item['pDate'])
-                weibo.comment_count = str(item['commentCount'])
-                weibo.author_name = str(item['from']['name'])
-                weibo.author_uid = str(item['from']['id'])
-                weibo.location = str(item['from']['extend']['location'])
-                print(weibo.author_uid)
+                weibo['is_repost'] = False
+                weibo['repost_location'] = ''
+                weibo['text'] = str(item['mblog']['text'])
+                print(weibo['text'])
+                weibo['uid'] = str(item['from']['url']).split('/')[-1]
+                weibo['time'] = str(item['pDate'])
+                weibo['comment_count'] = str(item['commentCount'])
+                weibo['author_name'] = str(item['from']['name'])
+                weibo['author_uid'] = str(item['from']['id'])
+                weibo['location'] = str(item['from']['extend']['location'])
+                print(weibo['author_uid'])
             except:
                 continue
 
             try:
-                weibo.terminal_source = str(item['mblog']['source']).split('>')[1].split('<')[0]
+                weibo['terminal_source'] = str(item['mblog']['source']).split('>')[1].split('<')[0]
             except IndexError:
-                weibo.terminal_source = '未知'
+                weibo['terminal_source'] = '未知'
             if item['mblog'].has_key('retweeted_status'):
                 count += 1
-                weibo.is_repost = True
+                weibo['is_repost'] = True
                 try:
-                    weibo.repost_location = str(item['mblog']['retweeted_status']['user']['location'])
-                    weibo.repost_reposted_count = str(item['mblog']['retweeted_status']['reposts_count'])
-                    weibo.repost_text = str(item['mblog']['retweeted_status']['text'])
+                    weibo['repost_location'] = str(item['mblog']['retweeted_status']['user']['location'])
+                    weibo['repost_reposted_count'] = str(item['mblog']['retweeted_status']['reposts_count'])
+                    weibo['repost_text'] = str(item['mblog']['retweeted_status']['text'])
                 except:
                     pass
 
             weibo_list.append(weibo)
 
         print("为转发的微博数： ", str(count))
-        self.store_to_mongodb(weibo_list)
+     #   self.store_to_mongodb(weibo_list)
         self.weibo_list = weibo_list
+        print(weibo_list)
         return weibo_list
 
-    @staticmethod
-    def store_to_mongodb(weibo_list, table_name=''):
-        sina_store_object = sina_store.SinaStore()
-        if table_name == '':
-            sina_store_object.weibo_table = sina_store_object.db['realtime_weibo']
-        else:
-            sina_store_object.weibo_table = sina_store_object.db[table_name]
-        for weibo in weibo_list:
-            sina_store_object.store_in_mongodb(weibo)
+    # @staticmethod
+    # def store_to_mongodb(weibo_list, table_name=''):
+    #     sina_store_object = sina_store.SinaStore()
+    #     if table_name == '':
+    #         sina_store_object.weibo_table = sina_store_object.db['realtime_weibo']
+    #     else:
+    #         sina_store_object.weibo_table = sina_store_object.db[table_name]
+    #     for weibo in weibo_list:
+    #         sina_store_object.store_in_mongodb(weibo)
 
 
 def start_run():
@@ -207,18 +206,20 @@ def start_run():
     realtime_weibo_list = RealtimeRandomWeibo()
     check_object = fenci.TestKeyword()
     for weibo in realtime_weibo_list.weibo_list:
-        flag = check_object.test_if_has_keyword(weibo.text)
+        flag = check_object.test_if_has_keyword(weibo['text'])
         if flag:
             #user = realtime_user_relationship.RealtimeUserRealationship(weibo.author_uid)
-            weibo.threatened = random.randint(68, 100)
+            weibo['threatened'] = random.randint(68, 100)
+            print(weibo['time'])
+            print(weibo['author_uid'])
         else:
-            weibo.threatened = random.randint(0, 68)
+            weibo['threatened'] = random.randint(0, 68)
     weibo_dict_list = []
     for weibo in realtime_weibo_list.weibo_list:
         weibo_dict = {}
-        weibo_dict['author_name'] = weibo.author_name
-        weibo_dict['author_uid'] = weibo.author_uid
-        weibo_dict['location'] = weibo.location
+        weibo_dict['author_name'] = weibo['author_name']
+        weibo_dict['author_uid'] = weibo['author_uid']
+        weibo_dict['location'] = weibo['location']
         if weibo_dict['location'] in location_dict.keys():
             pass
         else:
@@ -229,12 +230,12 @@ def start_run():
                 except:
                     pass
             weibo_dict['location'] = weibo_dict['location'].split(' ')[0]
-        weibo_dict['threatened'] = weibo.threatened
-        weibo_dict['text'] = weibo.text
-        weibo_dict['time'] = weibo.time
-        weibo_dict['id'] = weibo.uid
-        weibo_dict['is_repost'] = weibo.is_repost
-        weibo_dict['repost_location'] = weibo.repost_location
+        weibo_dict['threatened'] = weibo['threatened']
+        weibo_dict['text'] = weibo['text']
+        weibo_dict['time'] = weibo['time']
+        weibo_dict['id'] = weibo['uid']
+        weibo_dict['is_repost'] = weibo['is_repost']
+        weibo_dict['repost_location'] = weibo['repost_location']
         if weibo_dict['repost_location'] in location_dict.keys():
             pass
         else:
@@ -251,8 +252,8 @@ def start_run():
         if weibo_dict['is_repost'] and weibo_dict['repost_location'] not in location_dict.keys():
             continue
         weibo_dict_list.append(weibo_dict)
-
-    RealtimeRandomWeibo.store_to_mongodb(weibo_dict_list, table_name='temp_realtime_weibo')
+    print(weibo_dict_list)
+    #RealtimeRandomWeibo.store_to_mongodb(weibo_dict_list, table_name='temp_realtime_weibo')
     return weibo_dict_list
 
 

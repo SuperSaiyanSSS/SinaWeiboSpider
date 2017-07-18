@@ -8,10 +8,10 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 sys.path.append("..")
-from a1 import base
-from a1 import sina_store
-from a1 import sina_weibo
-from a1 import sina_people
+# from a1 import base
+# from a1 import sina_store
+# from a1 import sina_weibo
+# from a1 import sina_people
 import fenci
 reload(sys)
 sys.setdefaultencoding('utf-8')

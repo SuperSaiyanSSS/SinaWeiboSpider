@@ -5,12 +5,12 @@ sys.path.append("..")
 reload(sys)
 sys.setdefaultencoding('utf-8')
 import jieba
-from a1 import sina_people
-from a1 import sina_people
-from a1 import sina_weibo
-from a1 import base
-from a1 import test1
-from a1 import sina_store
+# from a1 import sina_people
+# from a1 import sina_people
+# from a1 import sina_weibo
+# from a1 import base
+# from a1 import test1
+# from a1 import sina_store
 from bs4 import BeautifulSoup
 import requests
 import pymongo
@@ -30,36 +30,40 @@ def clean_keyword():
     :return:
     """
     word_list = []
-    with open('xie.txt', 'r') as f:
+    with open('mingan_strip_equal.txt', 'r') as f:
         for i in f.readlines():
-            if i.split('=')[0].strip().strip('\n'):
-                word_list.append(i.split('=')[0].strip().strip('\n'))
-
-    with open('guang.txt', 'r') as f:
-        for i in f.readlines():
-            if i.split('=')[0].strip().strip('\n'):
-                word_list.append(i.split('=')[0].strip().strip('\n'))
-
-    with open('huang.txt', 'r') as f:
-        for i in f.readlines():
-            if i.split('=')[0].strip().strip('\n'):
-                word_list.append(i.split('=')[0].strip().strip('\n'))
-
-    with open('mingan.txt', 'r') as f:
-        for i in f.readlines():
-            if i.split('=')[0].strip().strip('\n'):
-                word_list.append(i.split('=')[0].strip().strip('\n'))
-
-    with open('mingan_9.txt','a') as f:
-        print(word_list)
-        for i in word_list:
-            if i:
-                b = repr(i)
-                try:
-                    print(unicode(eval(b), "gbk"))
-                except:
-                    continue
-                f.write(str(unicode(eval(b), "gbk"))+' '+'300'+'\n')
+            if i != '':
+                word_list.append(i.strip().strip('\n'))
+    # with open('xie.txt', 'r') as f:
+    #     for i in f.readlines():
+    #         if i.split('=')[0].strip().strip('\n'):
+    #             word_list.append(i.split('=')[0].strip().strip('\n'))
+    #
+    # with open('guang.txt', 'r') as f:
+    #     for i in f.readlines():
+    #         if i.split('=')[0].strip().strip('\n'):
+    #             word_list.append(i.split('=')[0].strip().strip('\n'))
+    #
+    # with open('huang.txt', 'r') as f:
+    #     for i in f.readlines():
+    #         if i.split('=')[0].strip().strip('\n'):
+    #             word_list.append(i.split('=')[0].strip().strip('\n'))
+    #
+    # with open('mingan.txt', 'r') as f:
+    #     for i in f.readlines():
+    #         if i.split('=')[0].strip().strip('\n'):
+    #             word_list.append(i.split('=')[0].strip().strip('\n'))
+    #
+    # with open('mingan_9.txt','a') as f:
+    #     print(word_list)
+    #     for i in word_list:
+    #         if i:
+    #             b = repr(i)
+    #             try:
+    #                 print(unicode(eval(b), "gbk"))
+    #             except:
+    #                 continue
+    #             f.write(str(unicode(eval(b), "gbk"))+' '+'300'+'\n')
 
 
 def remove_equal():

@@ -16,14 +16,15 @@ import jieba
 import pickle as pkl
 
 import svm_module
+from svm_utils import *
 
-path_doc_root = 'H:\py\workplace\/a2\SogouC.reduced2\\Reduced'  # 根目录 即存放按类分类好的问本纪
-path_tmp = 'H:\py\workplace\/a2\SogouC.reduced2\\temp1'  # 存放中间结果的位置
-path_dictionary = os.path.join(path_tmp, 'THUNews.dict')
-path_tmp_tfidf = os.path.join(path_tmp, 'tfidf_corpus')
-path_tmp_lsi = os.path.join(path_tmp, 'lsi_corpus')
-path_tmp_lsimodel = os.path.join(path_tmp, 'lsi_model.pkl')
-path_tmp_predictor = os.path.join(path_tmp, 'predictor.pkl')
+# path_doc_root = 'H:\py\workplace\/a2\SogouC.reduced2\\Reduced'  # 根目录 即存放按类分类好的问本纪
+# path_tmp = 'H:\py\workplace\/a2\SogouC.reduced2ss3\\temp1'  # 存放中间结果的位置
+# path_dictionary = os.path.join(path_tmp, 'THUNews.dict')
+# path_tmp_tfidf = os.path.join(path_tmp, 'tfidf_corpus')
+# path_tmp_lsi = os.path.join(path_tmp, 'lsi_corpus')
+# path_tmp_lsimodel = os.path.join(path_tmp, 'lsi_model.pkl')
+# path_tmp_predictor = os.path.join(path_tmp, 'predictor.pkl')
 
 
 def reduce_lsi(dictionary, corpus_tfidf, weibo_test):
