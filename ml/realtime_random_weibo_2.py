@@ -135,17 +135,32 @@ location_dict = {
 class RealtimeRandomWeibo(object):
     KEY = '9LF3gnOtYENP26HSoNAxPptHk7eCgxdWjL5ZuSdJXuGALaAcTrLXdGI7TkEYnIQm'
 
-    def __init__(self, lazy=False):
+    def __init__(self, lazy=True):
         self.href = 'http://api03.bitspaceman.com:8000/post/weibo?kw=的&apikey=' + self.KEY
         self.weibo_list = []
+        self.weibo_list_all = []
+        self.weibo_list_threat = []
+        self.iter_all = None
+        self.iter_count = 0
         if not lazy:
             self.get_random_weibo()
 
+        # 连接至mongodb
+        self.mongo_client = pymongo.MongoClient('localhost', 27017)
+        self.db = self.mongo_client['Weibo']
+
     def get_random_weibo(self):
+        self.iter_count += 15
         requests_get = requests.get(self.href, timeout=15)
         requests_content = requests_get.content
         requests_dict = json.loads(requests_content)
-        self.parse_requests_dict(requests_dict)
+
+        weibo_list = self.parse_requests_dict(requests_dict)
+
+        copy_of_weibo_list = self.parse_weibo_list(weibo_list)
+        self.weibo_list_all = copy_of_weibo_list
+        self.weibo_list_threat = [weibo for weibo in copy_of_weibo_list if int(weibo['threatened']) > 68]
+        self.store_to_mongodb()
 
     def parse_requests_dict(self, requests_dict):
         weibo_list = []
@@ -163,7 +178,10 @@ class RealtimeRandomWeibo(object):
                 weibo['comment_count'] = str(item['commentCount'])
                 weibo['author_name'] = str(item['from']['name'])
                 weibo['author_uid'] = str(item['from']['id'])
+                weibo['author_fans'] = str(item['from']['fansCount'])
+                weibo['author_follower'] = str(item['from']['friendCount'])
                 weibo['location'] = str(item['from']['extend']['location'])
+                weibo['province'] = ''
                 print(weibo['author_uid'])
             except:
                 continue
@@ -179,6 +197,11 @@ class RealtimeRandomWeibo(object):
                     weibo['repost_location'] = str(item['mblog']['retweeted_status']['user']['location'])
                     weibo['repost_reposted_count'] = str(item['mblog']['retweeted_status']['reposts_count'])
                     weibo['repost_text'] = str(item['mblog']['retweeted_status']['text'])
+                    weibo['repost_attitude_count'] = str(item['mblog']['retweeted_status']['attitudes_count'])
+                    print(weibo['repost_location'])
+                    print(weibo['repost_reposted_count'])
+                    print(weibo['repost_text'])
+                    print(weibo['repost_attitude_count'])
                 except:
                     pass
 
@@ -188,88 +211,234 @@ class RealtimeRandomWeibo(object):
      #   self.store_to_mongodb(weibo_list)
         self.weibo_list = weibo_list
         print(weibo_list)
+
         return weibo_list
 
-    # @staticmethod
-    # def store_to_mongodb(weibo_list, table_name=''):
-    #     sina_store_object = sina_store.SinaStore()
-    #     if table_name == '':
-    #         sina_store_object.weibo_table = sina_store_object.db['realtime_weibo']
-    #     else:
-    #         sina_store_object.weibo_table = sina_store_object.db[table_name]
-    #     for weibo in weibo_list:
-    #         sina_store_object.store_in_mongodb(weibo)
+    def parse_weibo_list(self, weibo_list):
+        """
+        分析微博威胁程度与规范地址格式
+        :param weibo_list: 初始微博列表
+        :return: 分析后的微博列表
+        """
+        for i in weibo_list:
+            i['location'] = mapped_province(i['location'], weibo=i)
+            i['repost_location'] = mapped_province(i['repost_location'])
+            print(i['location'], i['repost_location'])
+        print('111111111111111111111111111111111111111111111111111')
+
+        copy_of_weibo_list = []
+
+        # 筛选符合地图显示的地点
+        for i in weibo_list:
+            if i['location'] is None or i['location'] == '':
+                continue
+            if i['repost_location'] is None or i['repost_location'] == '':
+                i['is_repost'] = False
+
+            i['location'] = str(i['location'])
+            i['repost_location'] = str(i['repost_location'])
+            copy_of_weibo_list.append(i)
+
+        copy_of_weibo_list = assess_threat_levels(copy_of_weibo_list)
+        return copy_of_weibo_list
+
+    def store_to_mongodb(self):
+
+        weibo_table = self.db['realtime719']
+        for i in self.weibo_list_all:
+            weibo_table.insert(i)
+
+        weibo_table = self.db['realtime719t']
+        for i in self.weibo_list_threat:
+            weibo_table.insert(i)
+
+    # def get_iter_all(self):
+    #     weibo_table = self.db['realtime719']
+    #     for i in weibo_table.find():
+    #         yield i
+
+    def get_realtime_weibo_from_mongodb(self):
+        weibo_table = self.db['realtime719']
+        count = 0
+        now_weibo_all = []
+        for i in weibo_table.find():
+            if count<self.iter_count:
+                continue
+            else:
+                now_weibo_all.append(i)
+        return i
+
+    def get_realtime_weibo_from_mongodb(self):
+        weibo_table = self.db['realtime719']
+        count = 0
+        now_weibo_all = []
+        for i in weibo_table.find():
+            if count<self.iter_count:
+                count += 1
+                continue
+            else:
+                count+=1
+                now_weibo_all.append(i)
+        return now_weibo_all
 
 
-def start_run():
-    flag = False
-    realtime_weibo_list = RealtimeRandomWeibo()
+
+
+
+mapped_dict = {
+'北京':'北京',
+'上海':'上海',
+'天津':'天津',
+'重庆':'重庆',
+'河北':'石家庄',
+'山西':'太原',
+'辽宁':'沈阳',
+'吉林':'长春',
+'黑龙江':'哈尔滨',
+'江苏':'南京',
+'浙江':'杭州',
+'安徽':'合肥',
+'福建':'福州',
+'江西':'南昌',
+'山东':'济南',
+'河南' :'郑州',
+'湖北':'武汉',
+'湖南':'长沙',
+'广东':'广州',
+'海南':'海口',
+'四川':'成都',
+'贵州':'贵阳',
+'云南':'昆明',
+'陕西':'西安',
+'甘肃':'兰州',
+'青海': '西宁',
+'西藏' :'拉萨',
+'广西':'南宁',
+'内蒙':'呼和浩特',
+'宁夏':'银川',
+'新疆':'乌鲁木齐'
+}
+
+
+def mapped_province(weibo_location, weibo=None):
+    """
+    匹配省份
+    """
+    if len(weibo_location.split(' ')) > 1:
+        if weibo and weibo_location.split(' ')[0] in mapped_dict.keys():
+            weibo['province'] = weibo_location.split(' ')[0]
+
+        if weibo_location.split(' ')[1] in location_dict.keys():
+            weibo_location = weibo_location.split(' ')[1]
+        elif weibo_location.split(' ')[0] in location_dict.keys():
+            weibo_location = weibo_location.split(' ')[0]
+        else:
+            weibo_location = ''
+
+
+    else:
+
+        if weibo and weibo_location in mapped_dict.keys():
+            weibo['province'] = weibo_location.strip()
+
+        if weibo_location.strip() in location_dict.keys():
+            weibo_location = weibo_location.strip()
+        else:
+            if weibo_location.strip() in mapped_dict.keys():
+                print(weibo_location.strip())
+                weibo_location = mapped_dict.get(weibo_location.strip())
+            else:
+                weibo_location = ''
+
+
+    return weibo_location
+
+
+def assess_threat_levels(copy_of_weibo_list):
+    """
+    评估威胁程度
+    """
     check_object = fenci.TestKeyword()
-    for weibo in realtime_weibo_list.weibo_list:
+
+    for weibo in copy_of_weibo_list:
         flag = check_object.test_if_has_keyword(weibo['text'])
+        threat = 0
+        if weibo['is_repost']:
+            flag = flag or check_object.test_if_has_keyword(weibo['repost_text'])
         if flag:
-            #user = realtime_user_relationship.RealtimeUserRealationship(weibo.author_uid)
-            weibo['threatened'] = random.randint(68, 100)
+            if weibo.has_key('repost_reposted_count') and weibo['repost_reposted_count']:
+                if int(weibo['repost_reposted_count']) > 10:
+                    threat += 1
+            if weibo.has_key('comment_count') and weibo['comment_count']:
+                if int(weibo['comment_count'] > 1):
+                    threat += 1
+            if weibo.has_key('repost_attitude_count') and weibo['repost_attitude_count']:
+                if int(weibo['repost_attitude_count']) > 10:
+                    threat += 1
+            if weibo.has_key('author_fans') and weibo['author_fans']:
+                if int(weibo['author_fans']) > 100:
+                    threat += 1
+
+            weibo['threatened'] = random.randint(68, 80)
+
+            if threat == 1 or threat == 2:
+                weibo['threatened'] = random.randint(80, 90)
+                print('what?????????????????????')
+                print(weibo['threatened'] )
+
+            if threat > 2:
+                weibo['threatened'] = random.randint(90, 100)
+                print('what?????????????????????')
+                print(weibo['threatened'] )
+
             print(weibo['time'])
             print(weibo['author_uid'])
         else:
             weibo['threatened'] = random.randint(0, 68)
-    weibo_dict_list = []
-    for weibo in realtime_weibo_list.weibo_list:
-        weibo_dict = {}
-        weibo_dict['author_name'] = weibo['author_name']
-        weibo_dict['author_uid'] = weibo['author_uid']
-        weibo_dict['location'] = weibo['location']
-        if weibo_dict['location'] in location_dict.keys():
-            pass
-        else:
-            for location in location_dict.keys():
-                try:
-                    if weibo_dict['location'].split(' ')[1] == location:
-                        weibo_dict['location'] = weibo_dict['location'].split(' ')[1]
-                except:
-                    pass
-            weibo_dict['location'] = weibo_dict['location'].split(' ')[0]
-        weibo_dict['threatened'] = weibo['threatened']
-        weibo_dict['text'] = weibo['text']
-        weibo_dict['time'] = weibo['time']
-        weibo_dict['id'] = weibo['uid']
-        weibo_dict['is_repost'] = weibo['is_repost']
-        weibo_dict['repost_location'] = weibo['repost_location']
-        if weibo_dict['repost_location'] in location_dict.keys():
-            pass
-        else:
-            for location in location_dict.keys():
-                try:
-                    if weibo_dict['repost_location'].split(' ')[1] == location:
-                        weibo_dict['repost_location'] = weibo_dict['repost_location'].split(' ')[1]
-                except:
-                    pass
-            weibo_dict['repost_location'] = weibo_dict['repost_location'].split(' ')[0]
 
-        if weibo_dict['location'] not in location_dict.keys():
+    return copy_of_weibo_list
+
+
+def start_run():
+
+    realtime_weibo_object = RealtimeRandomWeibo()
+
+    for i in realtime_weibo_object.weibo_list:
+        i['location'] = mapped_province(i['location'], weibo=i)
+        i['repost_location'] = mapped_province(i['repost_location'])
+        print(i['location'], i['repost_location'])
+    print('111111111111111111111111111111111111111111111111111')
+
+    copy_of_weibo_list = []
+
+    # 筛选符合地图显示的地点
+    for i in realtime_weibo_object.weibo_list:
+        if i['location'] is None or i['location'] == '':
             continue
-        if weibo_dict['is_repost'] and weibo_dict['repost_location'] not in location_dict.keys():
-            continue
-        weibo_dict_list.append(weibo_dict)
-    print(weibo_dict_list)
-    #RealtimeRandomWeibo.store_to_mongodb(weibo_dict_list, table_name='temp_realtime_weibo')
-    return weibo_dict_list
+        if i['repost_location'] is None or i['repost_location'] == '':
+            i['is_repost'] = False
+
+        i['location'] = str(i['location'])
+        i['repost_location'] = str(i['repost_location'])
+        copy_of_weibo_list.append(i)
+
+    copy_of_weibo_list = assess_threat_levels(copy_of_weibo_list)
+    return copy_of_weibo_list
+
+
 
 
 
 if __name__ == '__main__':
-    start_run()
-    # flag = False
-    # realtime_weibo_list = RealtimeRandomWeibo()
-    # check_object = fenci.TestKeyword()
-    # for weibo in realtime_weibo_list.weibo_list:
-    #     flag = check_object.test_if_has_keyword(weibo.text)
-    #     if flag:
-    #       #  user = realtime_user_relationship.RealtimeUserRealationship(weibo.author_uid)
-    #         weibo.threatened = random.randint(68, 100)
-    #         break
-    #     else:
-    #         weibo.threatened = random.randint(0, 68)
-    # for name, value in vars(realtime_weibo_list.weibo_list[1]).items():
-    #     print(name, value)
+
+    a = RealtimeRandomWeibo()
+    a.get_random_weibo()
+    l = a.get_realtime_weibo_from_mongodb()
+    for i in l:
+        print(i)
+    # a = start_run()
+    # for i in a:
+    #     print(i['location'])
+    #     print(type(i['location']))
+    #     if i['is_repost']:
+    #         print("转发自"+str(i['repost_location']))
