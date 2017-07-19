@@ -9,19 +9,25 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 sys.path.append("..")
-from a1 import base
-from a1 import sina_store
-from a1 import sina_weibo
-from a1 import sina_people
+from wbcls.sina_store import SinaStore
 import fenci
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+RALATIONTABLE = 'Relation719'
 
 
 class RealtimeUserRealationship(object):
     KEY = '9LF3gnOtYENP26HSoNAxPptHk7eCgxdWjL5ZuSdJXuGALaAcTrLXdGI7TkEYnIQm'
 
     def __init__(self, user_id, user=True, fans=True, follow=True):
+        # 连接至mongodb
+        self.mongo_client = pymongo.MongoClient('localhost', 27017)
+        self.db = self.mongo_client['Weibo']
+
+        self._session = requests.Session()
+        self._session.mount('http://', self._create_adapter())
+
         self.fans_href = 'http://api03.bitspaceman.com:8000/profile/weibo?type=3&id='+str(user_id)+'&apikey=' + \
                          self.KEY + '&size=30'
         self.fans_list = []
@@ -29,27 +35,28 @@ class RealtimeUserRealationship(object):
                            self.KEY+'&size=30'
         self.follow_list = []
 
-        self.user_href = 'http://api03.bitspaceman.com:8000/profile/weibo?type=1&'+str(user_id)+'&apikey=' + self.KEY
+        self.user_href = 'http://api03.bitspaceman.com:8000/profile/weibo?type=1&id='+str(user_id)+'&apikey=' + self.KEY
+
         self.info_dict = {}
         self.get_relationship(user=user, fans=fans, follow=follow)
 
     def get_relationship(self, user=True, fans=True, follow=False):
 
         if fans:
-            requests_get = requests.get(self.fans_href, timeout=15)
+            requests_get = self._session.get(self.fans_href, timeout=15)
             requests_content = requests_get.content
             requests_dict = json.loads(requests_content)
             self.fans_list = self.parse_requests_dict(requests_dict)
-        tt.sleep(5)
+        tt.sleep(0.5)
         if follow:
-            requests_get = requests.get(self.follow_href, timeout=15)
+            requests_get = self._session.get(self.follow_href, timeout=15)
             requests_content = requests_get.content
             requests_dict = json.loads(requests_content)
             self.follow_list = self.parse_requests_dict(requests_dict)
-        tt.sleep(5)
+        tt.sleep(0.5)
 
         if user:
-            requests_get = requests.get(self.user_href, timeout=15)
+            requests_get = self._session.get(self.user_href, timeout=15)
             requests_content = requests_get.content
             requests_dict = json.loads(requests_content)
             self.info_dict = self.parse_requests_info_dict(requests_dict)
@@ -94,28 +101,40 @@ class RealtimeUserRealationship(object):
                     continue
             info_dict['fans_list'] = self.fans_list
             info_dict['follow_list'] = self.follow_list
+            print(info_dict['name'])
+            print(1111111111111111111111)
             return info_dict
         except:
             print(requests_dict)
 
-
     def store_to_mongodb(self):
-        sina_store_object = sina_store.SinaStore()
-        sina_store_object.weibo_table = sina_store_object.db['temp_realtime_relationship']
-        sina_store_object.store_in_mongodb(self.info_dict)
-        # sina_store_object = sina_store.SinaStore()
-        # if fans:
-        #     sina_store_object.weibo_table = sina_store_object.db['realtime_user_fans']
-        #     for user in user_list:
-        #         sina_store_object.store_in_mongodb(user)
-        # if follow:
-        #     sina_store_object.weibo_table = sina_store_object.db['realtime_user_follow']
-        #     for user in user_list:
-        #         sina_store_object.store_in_mongodb(user)
+        table = self.db[RALATIONTABLE]
+        table.insert(self.info_dict)
+
+
+    @staticmethod
+    def _create_adapter():
+        return requests.adapters.HTTPAdapter(
+            max_retries=requests.adapters.Retry(
+                total=5,
+                status_forcelist=[403, 404, 408, 500, 502],
+            )
+        )
+
+
+
+def get_relationship_from_mongodb(user_id):
+    mongo_client = pymongo.MongoClient('localhost', 27017)
+    db = mongo_client['Weibo']
+    table = db[RALATIONTABLE]
+    for i in table.find():
+        if i['url'] == 'http://weibo.com/u/' + str(user_id):
+            print(i['name'])
+
 
 if __name__ == '__main__':
     a = RealtimeUserRealationship(user_id='2671467531')
-
+    get_relationship_from_mongodb('2671467531')
     b = {
         'topic':'水滴直播',
         'question_list':
@@ -123,13 +142,13 @@ if __name__ == '__main__':
                 {
                     'question_name':'如何看待。。问题1',
                     'anwser_words':
-                            ['好','希拉里','4444']
+                            ['好','希拉里','4444'],
                     'percent':'8.33'
                 },
                 {
                     'question_name': '如何看待。。问题2',
                     'anwser_words':
-                        ['不会', '淳朴', '4444']
+                        ['不会', '淳朴', '4444'],
                     'percent': '4.44'
                 },
             ]

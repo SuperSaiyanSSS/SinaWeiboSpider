@@ -2,17 +2,19 @@
 from __future__ import unicode_literals, print_function
 from __future__ import division
 import json
-import csv
 import pymongo
 import requests
 from bs4 import BeautifulSoup
 import sys
 sys.path.append("..")
 import random
-import realtime_user_relationship
 import fenci
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+REALTIMEWEIBO = 'realtime719'
+REALTIMEWEIBOT = 'realtime719t'
+
 
 location_dict = {
     '上海': [121.4648,31.2891],
@@ -244,11 +246,11 @@ class RealtimeRandomWeibo(object):
 
     def store_to_mongodb(self):
 
-        weibo_table = self.db['realtime719']
+        weibo_table = self.db[REALTIMEWEIBO]
         for i in self.weibo_list_all:
             weibo_table.insert(i)
 
-        weibo_table = self.db['realtime719t']
+        weibo_table = self.db[REALTIMEWEIBOT]
         for i in self.weibo_list_threat:
             weibo_table.insert(i)
 
@@ -258,7 +260,7 @@ class RealtimeRandomWeibo(object):
     #         yield i
 
     def get_realtime_weibo_from_mongodb(self):
-        weibo_table = self.db['realtime719']
+        weibo_table = self.db[REALTIMEWEIBO]
         count = 0
         now_weibo_all = []
         for i in weibo_table.find():
@@ -266,10 +268,10 @@ class RealtimeRandomWeibo(object):
                 continue
             else:
                 now_weibo_all.append(i)
-        return i
+        return now_weibo_all
 
     def get_realtime_weibo_from_mongodb(self):
-        weibo_table = self.db['realtime719']
+        weibo_table = self.db[REALTIMEWEIBO]
         count = 0
         now_weibo_all = []
         for i in weibo_table.find():
@@ -281,8 +283,13 @@ class RealtimeRandomWeibo(object):
                 now_weibo_all.append(i)
         return now_weibo_all
 
-
-
+    def get_realtime_weibo_of_province(self, target_province):
+        weibo_table = self.db[REALTIMEWEIBO]
+        target_province_weibo_list = []
+        for i in weibo_table.find():
+            if i['province'] == str(target_province):
+                target_province_weibo_list.append(i)
+        return target_province_weibo_list
 
 
 mapped_dict = {
