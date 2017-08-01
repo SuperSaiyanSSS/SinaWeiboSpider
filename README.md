@@ -1,7 +1,7 @@
 ﻿# SinaWeiboSpider
 新浪微博较为完善的爬虫，持续改进，欢迎star~
 
-注：由于本人没注意自动登录获取的cookies是WAP版的，而不是普通网页版
+注：自动登录获取的cookies是WAP版的，而不是普通网页版
 
 
 
