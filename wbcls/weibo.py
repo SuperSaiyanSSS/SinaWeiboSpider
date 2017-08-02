@@ -90,7 +90,7 @@ class Weibo(SinaBaseObject):
             ]
 
     """
-    def __init__(self, id, session=None, cache={}, text='', time='', required_count=0):
+    def __init__(self, id, cache={}):
         super(Weibo, self).__init__()
         self.uid = id
         self._cache = cache
@@ -98,15 +98,6 @@ class Weibo(SinaBaseObject):
         self.href = 'http://weibo.cn/comment/'+str(id)
         self.main_page_resource = ''
         self._get_author_data()
-        # 作者信息
-     #   self.author_name = ''
-    #    self.author_uid = ''
-        # 评论
-#        self.comment_count = 0
-        # 赞
-   #     self.attitude_count = 0
-        # 转发
-     #   self.repost_count = 0
         # 该微博是否为转发
         self.is_repost = False
         # 该微博转发的微博的信息
@@ -191,50 +182,6 @@ class Weibo(SinaBaseObject):
             print("获取点赞数出错")
             attitude_count = 0
         return attitude_count
-
-    # def get_text(self):
-    #     """
-    #     获取微博内容
-    #     :return: str类型的微博文本内容
-    #     """
-    #  #   if self.text != '':
-    #   #      return self.text
-    #     if 1:
-    #         _retry_count = 3
-    #         while _retry_count > 0:
-    #             requests_content = self._soup
-    #             self.main_page_resource = requests_content
-    #             print(requests_content)
-    #             print("测试session的get方法")
-    #             try:
-    #                 self.text = requests_content.find(attrs={'id': 'M_'}).div.span.get_text()
-    #                 self.__get_author_data__()
-    #                 _retry_count -= 1
-    #                 break
-    #             except AttributeError:
-    #                 _retry_count -= 1
-    #
-    #         # 微博属性（转发数、赞数、评论数）
-    #         # wap版的此内容格式特别不规范
-    #         repost_number_node = requests_content.find(attrs={'id': 'rt'})
-    #         try:
-    #             self.repost_count = int(re.findall(pattern, repost_number_node.get_text())[0])
-    #         except IndexError:
-    #             self.repost_count = 0
-    #         try:
-    #             comment_number_node = repost_number_node.next_sibling
-    #             self.comment_count = int(re.findall(pattern, comment_number_node.get_text())[0])
-    #         except IndexError:
-    #             self.comment_count = 0
-    #         try:
-    #             attitude_number_node = comment_number_node.next_sibling
-    #             self.attitude_count = int(re.findall(pattern, attitude_number_node.get_text())[0])
-    #         except IndexError:
-    #             self.attitude_count = 0
-    #
-    #         # 微博发表时间
-    #         #self.time = requests_content.find(attrs={'id': 'M_'}).findAll('div')[1].span.get_text()
-    #         return self.text
 
     # 获取微博作者的昵称和uid
     def _get_author_data(self):
@@ -445,6 +392,49 @@ class Weibo(SinaBaseObject):
         for x in self._get_attribute_item('repost', self._get_repost_list):
             yield x
 
+    # def get_text(self):
+    #     """
+    #     获取微博内容
+    #     :return: str类型的微博文本内容
+    #     """
+    #  #   if self.text != '':
+    #   #      return self.text
+    #     if 1:
+    #         _retry_count = 3
+    #         while _retry_count > 0:
+    #             requests_content = self._soup
+    #             self.main_page_resource = requests_content
+    #             print(requests_content)
+    #             print("测试session的get方法")
+    #             try:
+    #                 self.text = requests_content.find(attrs={'id': 'M_'}).div.span.get_text()
+    #                 self.__get_author_data__()
+    #                 _retry_count -= 1
+    #                 break
+    #             except AttributeError:
+    #                 _retry_count -= 1
+    #
+    #         # 微博属性（转发数、赞数、评论数）
+    #         # wap版的此内容格式特别不规范
+    #         repost_number_node = requests_content.find(attrs={'id': 'rt'})
+    #         try:
+    #             self.repost_count = int(re.findall(pattern, repost_number_node.get_text())[0])
+    #         except IndexError:
+    #             self.repost_count = 0
+    #         try:
+    #             comment_number_node = repost_number_node.next_sibling
+    #             self.comment_count = int(re.findall(pattern, comment_number_node.get_text())[0])
+    #         except IndexError:
+    #             self.comment_count = 0
+    #         try:
+    #             attitude_number_node = comment_number_node.next_sibling
+    #             self.attitude_count = int(re.findall(pattern, attitude_number_node.get_text())[0])
+    #         except IndexError:
+    #             self.attitude_count = 0
+    #
+    #         # 微博发表时间
+    #         #self.time = requests_content.find(attrs={'id': 'M_'}).findAll('div')[1].span.get_text()
+    #         return self.text
 
 if __name__ == '__main__':
     def a():

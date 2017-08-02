@@ -18,7 +18,7 @@ class People(SinaBaseObject):
     """
     新浪微博的用户类
     """
-    def __init__(self, id, href=None, lazy=True, session=None, cache={}):
+    def __init__(self, id, href=None, cache={}):
         """
         <a1.sina_people.SinaPeople object at 0x0000000003791C88>
         {
@@ -65,33 +65,18 @@ class People(SinaBaseObject):
         """
         super(People, self).__init__()
         self.uid = str(id)
-        self._session = session
         self._cache = cache
         self.href = href
-    #    self.now_weibo_uid = ''
-      #  self.name = ''
-       # self.sex = '未知'
-     #   self.location = '未知'
         self.birthday = '未知'
         self.member_level = ''
-   #     self.weibo_count = ''
-   #     self.follow_count = ''
         self.follow_list = []
-     #   self.fans_count = ''
         self.fans_list = []
         self.is_V = False
         self.uid = self.uid.strip('\n')
         if not self.href:
-            self.href = 'http://weibo.cn/u/'+self.uid
+            self.href = 'http://weibo.cn/'+self.uid
         if not self.uid:
             self.uid = self.href.split('cn/')
-        if not lazy:
-            self.required_weibo_count = 30
-            self.required_member_count = 1
-            self.get_personal_information()
-            self.fans_list = self.get_fans_list()
-            self.follow_list = self.get_follow_list()
-            self.weibo_list = self.get_weibo_list()
 
     @property
     def basic_url(self):
@@ -154,6 +139,8 @@ class People(SinaBaseObject):
     @property
     @normal_attr()
     def weibo_count(self):
+        print(self._soup)
+        print(self.href)
         return int(re.findall(pattern, self._soup.find('div', attrs={'class': 'u'}).
                               findAll('div', attrs={'class': 'tip2'})[0].get_text())[0])
 
@@ -168,49 +155,6 @@ class People(SinaBaseObject):
     def fans_count(self):
         return int(re.findall(pattern, self._soup.find('div', attrs={'class': 'u'}).
                               findAll('div', attrs={'class': 'tip2'})[0].get_text())[2])
-
-    # def get_personal_information(self):
-    #     """
-    #     注：新浪有奇怪的BUG 带cookies访问http://weibo.cn/3193031501/info这类个人资料url时，总是File not found
-    #         若不带cookies则不能访问该页
-    #         所以只能获取个人主页简单的性别和地点信息
-    #
-    #         @2017/06/12：
-    #             新浪允许不带cookie访问某些页面，如某个微博页面
-    #             而对另一些页面 如个人主页的详细情况，则有的用户需要cookie，有的不需要。
-    #     :return:
-    #     """
-    #     requests_content = self.retry_requests(self.href)
-    #     try:
-    #         info_content = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.contents[0]
-    #     except AttributeError:
-    #         print(requests_content)
-    #         return False
-    #     # 此处split(' ')中的空格不是一般的空格 需要在原网页中复制
-    #     # 普通用户无图片标签
-    #     self.name = info_content.split(' ')[0].strip()
-    #     print(self.name)
-    #     try:
-    #         self.sex = info_content.split(' ')[1].split('/')[0].strip()
-    #         print(self.sex)
-    #         self.location = info_content.split(' ')[1].split('/')[1].strip()
-    #         print(self.name, self.sex, self.location)
-    #     except IndexError:
-    #         self.is_V = True
-    #         info2 = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.get_text()
-    #         self.sex = info2.split('/')[0].strip()[-1:].strip()
-    #         print(self.sex)
-    #         self.location = info2.split('/')[1].strip()[:3].strip()
-    #         print(self.name, self.sex, self.location)
-    #
-    #     # 获取该用户的微博数 关注数 粉丝数
-    #     self.weibo_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
-    #                                       findAll('div', attrs={'class': 'tip2'})[0].get_text())[0])
-    #     self.follow_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
-    #                                        findAll('div', attrs={'class': 'tip2'})[0].get_text())[1])
-    #     self.fans_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
-    #                                      findAll('div', attrs={'class': 'tip2'})[0].get_text())[2])
-    #     print(self.weibo_count, self.follow_count, self.fans_count)
 
     def __get_member_list__(self, target_member_type='fans'):
         """
@@ -422,7 +366,7 @@ class People(SinaBaseObject):
             yield x
 
     @property
-    @other_obj(class_name='weibo', module_filename='weibo')
+    @other_obj()
     def weibo(self):
         """
         获取指定用户的微博
@@ -459,9 +403,9 @@ class People(SinaBaseObject):
         now_page_count = 1
         is_first = True
         pattern = re.compile(r'\d+')
-        while True:
 
-            tt.sleep(self.time_delay)
+        while True:
+            tt.sleep(self._time_delay)
             # 获取页面源码(bs4对象)
             requests_content = BeautifulSoup(self._session.get(weibo_url).content, "lxml")
             # 获取当前页的微博列表
@@ -496,7 +440,6 @@ class People(SinaBaseObject):
                     comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-2].get_text())[0])
                 except IndexError:
                     print(weibo_uid)
-                 #   print(author_uid)
                     try:
                         comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-3].get_text())[0])
                         repost_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-4].get_text())[0])
@@ -618,8 +561,6 @@ class People(SinaBaseObject):
                     weibo.text = i.div.span.get_text()[1:]
 
                 weibo.uid = weibo_uid
-              #  weibo.attitude_count = int(re.findall(pattern, i.div.find_all('a')[-4].get_text())[0])
-              #  weibo.repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
 
                 # 有的微博处html格式不对
                 try:
@@ -675,3 +616,46 @@ class People(SinaBaseObject):
             weibo_url = 'http://weibo.cn/u/' + str(self.uid) + '?page=' + str(now_page_count)
 
         return weibo_list
+
+    # def get_personal_information(self):
+    #     """
+    #     注：新浪有奇怪的BUG 带cookies访问http://weibo.cn/3193031501/info这类个人资料url时，总是File not found
+    #         若不带cookies则不能访问该页
+    #         所以只能获取个人主页简单的性别和地点信息
+    #
+    #         @2017/06/12：
+    #             新浪允许不带cookie访问某些页面，如某个微博页面
+    #             而对另一些页面 如个人主页的详细情况，则有的用户需要cookie，有的不需要。
+    #     :return:
+    #     """
+    #     requests_content = self.retry_requests(self.href)
+    #     try:
+    #         info_content = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.contents[0]
+    #     except AttributeError:
+    #         print(requests_content)
+    #         return False
+    #     # 此处split(' ')中的空格不是一般的空格 需要在原网页中复制
+    #     # 普通用户无图片标签
+    #     self.name = info_content.split(' ')[0].strip()
+    #     print(self.name)
+    #     try:
+    #         self.sex = info_content.split(' ')[1].split('/')[0].strip()
+    #         print(self.sex)
+    #         self.location = info_content.split(' ')[1].split('/')[1].strip()
+    #         print(self.name, self.sex, self.location)
+    #     except IndexError:
+    #         self.is_V = True
+    #         info2 = requests_content.find('div', attrs={'class': 'u'}).table.tr.findAll('td')[1].div.span.get_text()
+    #         self.sex = info2.split('/')[0].strip()[-1:].strip()
+    #         print(self.sex)
+    #         self.location = info2.split('/')[1].strip()[:3].strip()
+    #         print(self.name, self.sex, self.location)
+    #
+    #     # 获取该用户的微博数 关注数 粉丝数
+    #     self.weibo_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+    #                                       findAll('div', attrs={'class': 'tip2'})[0].get_text())[0])
+    #     self.follow_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+    #                                        findAll('div', attrs={'class': 'tip2'})[0].get_text())[1])
+    #     self.fans_count = int(re.findall(pattern, requests_content.find('div', attrs={'class': 'u'}).
+    #                                      findAll('div', attrs={'class': 'tip2'})[0].get_text())[2])
+    #     print(self.weibo_count, self.follow_count, self.fans_count)

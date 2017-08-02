@@ -46,7 +46,7 @@ class SinaBaseObject(object):
     _session = requests.Session()
 
     def __init__(self):
-        self.time_delay = 2
+        self._time_delay = 1
 
     # 对requests.get()函数进行改进，增加重试和报错功能
     def retry_requests(self, url, uid=''):
