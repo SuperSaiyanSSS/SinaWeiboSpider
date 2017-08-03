@@ -53,6 +53,7 @@ class WeiboClient(object):
             cookies_dict[item.split('=')[0]] = item.split('=')[1]
         self._session.cookies.update(cookies_dict)
         # cookies2 = requests.utils.cookiejar_from_dict(cookies_dict)
+        base._session = self._session
 
     def __getattr__(self, item):
         """本函数为类工厂模式，用于获取各种类的实例，如 `Answer` `Question` 等.
@@ -70,7 +71,8 @@ class WeiboClient(object):
 
         def callback_getattr(id):
             # 类名第一个字母大写
-            return getattr(module, item.capitalize())(id, session=self._session)
+            return getattr(module, item.capitalize())(id)
+        # TODO: 增加me/comment/attitude/repost
         attr_list = ['me', 'weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:
             module = importlib.import_module('.'+item.lower(), 'wbcls')

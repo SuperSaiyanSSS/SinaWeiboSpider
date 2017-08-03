@@ -12,7 +12,7 @@ reload(sys)
 sys.path.append('../')
 sys.setdefaultencoding('utf-8')
 
-#
+
 # headers_for_get = {
 # 'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 # 'Accept-Encoding':'gzip, deflate, sdch',
@@ -48,6 +48,7 @@ class SinaBaseObject(object):
     def __init__(self):
         self._time_delay = 1
 
+    # TODO：给session的get方法增加日志的功能
     # 对requests.get()函数进行改进，增加重试和报错功能
     def retry_requests(self, url, uid=''):
         """

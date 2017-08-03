@@ -7,6 +7,7 @@ import re
 import requests
 from utils import *
 from base import SinaBaseObject
+from comment import Comment
 import sys
 import people
 reload(sys)
@@ -190,62 +191,6 @@ class Weibo(SinaBaseObject):
         self.author_uid = self._soup.find(attrs={'id': 'M_'}).div.a.attrs['href'].split('/')[-1]
         self._cache.setdefault('author_uid', self.author_uid)
 
-    def __get_attribute_list__(self, target_attribute_type, target_attribute_fuction, required_attribute_count=8):
-        """
-
-        :param target_attribute_type:
-        :param target_attribute_fuction:
-        :param required_attribute_count:
-        :return:
-        """
-        attribute_url = 'http://weibo.cn/' + str(target_attribute_type) + '/' + str(self.uid)
-        attribute_list = []
-        attribute_count = 0
-        page_count = 1
-        now_page_count = 1
-        is_first = True
-        pattern = re.compile(r'\d+')
-        while True:
-            print("现在是评论第一页")
-            tt.sleep(self.time_delay)
-            # 获取页面源码(bs4对象)
-            requests_content = self.retry_requests(attribute_url, uid=self.uid)
-
-            # 获取当前页的关注列表
-            unit_list = requests_content.find_all('div', attrs={'class': 'c'})
-            for i in unit_list:
-                # 调用具体函数提取内容
-                attribute = target_attribute_fuction(i)
-                if attribute is False:
-                    continue
-                # 计数器加一
-                attribute_count += 1
-                # 若超过了要求获取的属性数量，则返回
-                if attribute_count > required_attribute_count:
-                    return attribute_list
-                attribute_list.append(attribute)
-
-            # 若是第一页，则获取总页数
-            if is_first:
-                # 若发现‘x/y页’ 则有不止一页
-                if requests_content.find(attrs={'id': 'pagelist'}):
-                    page_count = requests_content.find(attrs={'id': 'pagelist'}).form.div.contents[-1].strip()
-                    page_count = page_count.split('/')[1]
-                    page_count = int(re.findall(pattern, page_count)[0])
-                    print(page_count)
-                else:
-                    return attribute_list
-                is_first = False
-
-            now_page_count += 1
-            if now_page_count >= page_count:
-                break
-
-            attribute_url = 'http://weibo.cn/' + str(target_attribute_type) +'/' + str(self.uid) +'?&&page=' + \
-                            str(now_page_count)
-
-        return attribute_list
-
     def _get_attribute_item(self, target_attribute_type, target_attribute_fuction):
         """
 
@@ -259,12 +204,13 @@ class Weibo(SinaBaseObject):
         page_count = 1
         now_page_count = 1
         is_first = True
+        is_first_item = True
         pattern = re.compile(r'\d+')
         while True:
-            print("现在是评论第一页")
-            tt.sleep(self.time_delay)
+           # print("现在是评论第一页")
+            tt.sleep(self._time_delay)
             # 获取页面源码(bs4对象)
-            requests_content =BeautifulSoup(self._session.get(attribute_url).content)
+            requests_content = BeautifulSoup(self._session.get(attribute_url).content)
 
             # 获取当前页的关注列表
             unit_list = requests_content.find_all('div', attrs={'class': 'c'})
@@ -272,6 +218,10 @@ class Weibo(SinaBaseObject):
                 # 调用具体函数提取内容
                 attribute = target_attribute_fuction(i)
                 if attribute is False:
+                    continue
+                # 获取点赞时会把作者也获取到 故去除
+                if target_attribute_type == 'attitude' or target_attribute_type == 'repost' and is_first_item:
+                    is_first_item = False
                     continue
                 yield attribute
 
@@ -282,7 +232,7 @@ class Weibo(SinaBaseObject):
                     page_count = requests_content.find(attrs={'id': 'pagelist'}).form.div.contents[-1].strip()
                     page_count = page_count.split('/')[1]
                     page_count = int(re.findall(pattern, page_count)[0])
-                    print(page_count)
+                  #  print(page_count)
                 else:
                     return
                 is_first = False
@@ -305,7 +255,7 @@ class Weibo(SinaBaseObject):
                 return False
         except:
             return False
-        comment['name'] = unit.a.get_text()
+        comment['author_name'] = unit.a.get_text()
         comment['author_uid'] = str(str(unit.a.attrs['href']).split('/')[-1])
         # 有的用户是个性域名，不符合/u/‘uid’的特点，故同时存href
       #  comment['people'] = sina_people.SinaPeople(uid=str(unit.a.attrs['href']).split('/')[-1],
@@ -318,20 +268,34 @@ class Weibo(SinaBaseObject):
                 comment['is_hot'] = False
         except:
             comment['is_hot'] = False
+
         # 正则匹配获取评论的赞数
-        comment['attitude_count'] = int(re.findall(pattern, unit.find_all('span', attrs={'class': 'cc'})[-2].get_text())
-                                        [0])
-        print(comment['name'])
-        print(comment['attitude_count'])
+        # 正常情况为`举报   赞[0]  回复 `
+        # 如果自己赞了本条评论 则此页面会变为`举报  已赞[1]  取消赞  回复 `
+        # 如果是自己的评论 则此页面会变为` 举报  赞[0]  回复  删除  `
+        # 故需要特殊处理
+        try:
+            comment['attitude_count'] = int(re.findall(pattern, unit.find_all('span', attrs={'class': 'cc'})[-2]
+                                                       .get_text())[0])
+        except IndexError:
+            try:
+                comment['attitude_count'] = int(re.findall(pattern, unit.find_all('span', attrs={'class': 'cmt'})[0]
+                                                           .get_text())[0])
+            except IndexError:
+                comment['attitude_count'] = int(
+                    re.findall(pattern, unit.find_all('span', attrs={'class': 'cc'})[-3].get_text())[0])
+
         # 获取评论的正文
         comment['text'] = unit.find_all('span', attrs={'class': 'ctt'})[0].get_text()
         # 获取评论的时间
         comment['time'] = unit.find_all('span', attrs={'class': 'ct'})[-1].get_text().split('来自')[0]
         # 获取评论的终端来源
         comment['terminal_source'] = unit.find_all('span', attrs={'class': 'ct'})[-1].get_text().split('来自')[1]
-        return comment
+
+        return Comment(id=str(comment['uid']), cache=comment)
 
     @property
+    @other_obj()
     def comment(self):
         """
         :param required_comment_count: 指定获取的条数
@@ -356,27 +320,30 @@ class Weibo(SinaBaseObject):
 
     @staticmethod
     def _get_attitude_list(unit):
+        from attitude import Attitude
         attitude = {}
         # 若有a标签则为点赞的unit
         try:
-            attitude['name'] = unit.a.get_text()
+            attitude['author_name'] = unit.a.get_text()
             attitude['time'] = unit.span.get_text()
            # attitude['people'] = SinaPeople(uid=str(unit.a.attrs['href']).split('/')[-1],
                                            # href='http://weibo.cn' + str(unit.a.attrs['href']))
         except AttributeError:
             return False
-        return attitude
+        return Attitude(id=0, cache=attitude)
 
     @property
+    @other_obj()
     def attitude(self):
         for x in self._get_attribute_item('attitude', self._get_attitude_list):
             yield x
 
     @staticmethod
     def _get_repost_list(unit):
+        from repost import Repost
         repost = {}
         try:
-            repost['name'] = unit.a.get_text()
+            repost['author_name'] = unit.a.get_text()
             tmp_slibing = unit.a.next_sibling
             while not isinstance(tmp_slibing, bs4.element.NavigableString):
                 tmp_slibing = tmp_slibing.next_sibling
@@ -385,9 +352,11 @@ class Weibo(SinaBaseObject):
                #                           href='http://weibo.cn/'+unit.a.attrs['href'])
         except AttributeError:
             return False
-        return repost
+        return Repost(id=0, cache=repost)
 
     @property
+    @other_obj()
+    # TODO：获取转发的时间、终端等信息
     def repost(self):
         for x in self._get_attribute_item('repost', self._get_repost_list):
             yield x
@@ -435,6 +404,64 @@ class Weibo(SinaBaseObject):
     #         # 微博发表时间
     #         #self.time = requests_content.find(attrs={'id': 'M_'}).findAll('div')[1].span.get_text()
     #         return self.text
+
+
+
+    # def __get_attribute_list__(self, target_attribute_type, target_attribute_fuction, required_attribute_count=8):
+    #     """
+    #
+    #     :param target_attribute_type:
+    #     :param target_attribute_fuction:
+    #     :param required_attribute_count:
+    #     :return:
+    #     """
+    #     attribute_url = 'http://weibo.cn/' + str(target_attribute_type) + '/' + str(self.uid)
+    #     attribute_list = []
+    #     attribute_count = 0
+    #     page_count = 1
+    #     now_page_count = 1
+    #     is_first = True
+    #     pattern = re.compile(r'\d+')
+    #     while True:
+    #         print("现在是评论第一页")
+    #         tt.sleep(self.time_delay)
+    #         # 获取页面源码(bs4对象)
+    #         requests_content = self.retry_requests(attribute_url, uid=self.uid)
+    #
+    #         # 获取当前页的关注列表
+    #         unit_list = requests_content.find_all('div', attrs={'class': 'c'})
+    #         for i in unit_list:
+    #             # 调用具体函数提取内容
+    #             attribute = target_attribute_fuction(i)
+    #             if attribute is False:
+    #                 continue
+    #             # 计数器加一
+    #             attribute_count += 1
+    #             # 若超过了要求获取的属性数量，则返回
+    #             if attribute_count > required_attribute_count:
+    #                 return attribute_list
+    #             attribute_list.append(attribute)
+    #
+    #         # 若是第一页，则获取总页数
+    #         if is_first:
+    #             # 若发现‘x/y页’ 则有不止一页
+    #             if requests_content.find(attrs={'id': 'pagelist'}):
+    #                 page_count = requests_content.find(attrs={'id': 'pagelist'}).form.div.contents[-1].strip()
+    #                 page_count = page_count.split('/')[1]
+    #                 page_count = int(re.findall(pattern, page_count)[0])
+    #                 print(page_count)
+    #             else:
+    #                 return attribute_list
+    #             is_first = False
+    #
+    #         now_page_count += 1
+    #         if now_page_count >= page_count:
+    #             break
+    #
+    #         attribute_url = 'http://weibo.cn/' + str(target_attribute_type) +'/' + str(self.uid) +'?&&page=' + \
+    #                         str(now_page_count)
+    #
+    #     return attribute_list
 
 if __name__ == '__main__':
     def a():
