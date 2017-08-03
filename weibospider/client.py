@@ -58,7 +58,7 @@ class WeiboClient(object):
     def __getattr__(self, item):
         """本函数为类工厂模式，用于获取各种类的实例，如 `Answer` `Question` 等.
         :支持的形式有:
-            1. client.me()
+            1. client.me()   （暂未实现）
             2. client.weibo()
             3. client.people()
             4. client.comment()
@@ -72,10 +72,10 @@ class WeiboClient(object):
         def callback_getattr(id):
             # 类名第一个字母大写
             return getattr(module, item.capitalize())(id)
-        # TODO: 增加me/comment/attitude/repost
+        # TODO: 增加me
         attr_list = ['me', 'weibo', 'people', 'comment', 'attitude', 'repost']
         if item.lower() in attr_list:
-            module = importlib.import_module('.'+item.lower(), 'wbcls')
+            module = importlib.import_module('.'+item.lower(), 'weibospider')
             return callback_getattr
 
 

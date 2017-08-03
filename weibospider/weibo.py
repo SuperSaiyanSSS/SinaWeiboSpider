@@ -5,7 +5,7 @@ import bs4
 from bs4 import BeautifulSoup
 import re
 import requests
-from utils import *
+from .utils import *
 from base import SinaBaseObject
 from comment import Comment
 import sys

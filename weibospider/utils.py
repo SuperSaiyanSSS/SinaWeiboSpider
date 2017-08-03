@@ -3,7 +3,6 @@ from __future__ import unicode_literals, print_function
 from bs4 import BeautifulSoup
 import functools
 import importlib
-import people
 
 Default_Header = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -104,7 +103,7 @@ def get_class_from_name(clsname=None, module_filename=None):
     file_name = module_filename or cls_name.lower()
 
     # 获取引用的模块 如 `<module 'wbcls.people' from 'H:\py\workplace\git_sina\real\SinaWeiboSpider\wbcls\people.pyc'>`
-    imported_module = importlib.import_module('.'+file_name, 'wbcls')
+    imported_module = importlib.import_module('.'+file_name, 'weibospider')
     #  print(imported_module)
     #  print(getattr(imported_module, cls_name))
     # 返回模块中对应传入类名的类 如 `<class 'wbcls.people.People'>`
