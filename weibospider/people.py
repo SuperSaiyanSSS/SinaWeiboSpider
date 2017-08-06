@@ -31,35 +31,7 @@ class People(SinaBaseObject):
             birthday: 未知,
             sex: 男,
             location: 江西,
-            member_level: '',
-            required_weibo_count: 2,
-            required_member_count: 2,
             href: http://weibo.cn/5501547091/follow,
-            fans_list: [
-                    {
-                        name: 03775177m,
-                        uid: 3874404440,
-                        fans_count: 9,
-                        is_v: False,
-                        href: http://weibo.cn/u/3874404440,
-                    },
-                     ....
-                       ]
-            follow_list: [
-                    {
-                        name: silent\u9ed8_7045,
-                        uid: 5534114512,
-                        fans_count: 12,
-                        is_v: False,
-                        href: http://weibo.cn/u/5534114512,
-                    },
-                    ....
-                        ]
-            weibo_list: [
-                        <a1.sina_weibo.SinaWeibo object at 0x0000000003920FD0>,
-                        <a1.sina_weibo.SinaWeibo object at 0x00000000039D38D0>,
-                        ....
-                        ]
         :param uid:
         :param href:
         """
@@ -139,8 +111,6 @@ class People(SinaBaseObject):
     @property
     @normal_attr()
     def weibo_count(self):
-        print(self._soup)
-        print(self.href)
         return int(re.findall(pattern, self._soup.find('div', attrs={'class': 'u'}).
                               findAll('div', attrs={'class': 'tip2'})[0].get_text())[0])
 
@@ -169,7 +139,7 @@ class People(SinaBaseObject):
         # TODO: 获取人物基本信息
         member_url = 'http://weibo.cn/' + str(self.uid) + '/' + str(target_member_type)
         self.href = member_url
-        print(member_url)
+        print("now is crawling " + str(member_url))
         page_count = 1
         now_page_count = 1
         is_first = True
@@ -199,8 +169,6 @@ class People(SinaBaseObject):
                 except:
                     member['fans_count'] = int(re.findall(pattern, i.tr.find_all('td')[1].contents[3])[0])
                     member['is_v'] = True
-                print(member['name'])
-                print(member['fans_count'])
 
                 yield member
 
@@ -212,7 +180,6 @@ class People(SinaBaseObject):
                     page_count = page_count.split('/')[1]
                     pattern = re.compile(r'\d+')
                     page_count = int(re.findall(pattern, page_count)[0])
-                    print(page_count)
                 else:
                     return
                 is_first = False
@@ -222,10 +189,6 @@ class People(SinaBaseObject):
                 return
 
             member_url = 'http://weibo.cn/' + str(self.uid)+'/'+str(target_member_type)+'?page=' + str(now_page_count)
-            print(member_url)
-            print(self.uid)
-            print(target_member_type)
-            print("以上")
 
     @property
     @normal_attr()
@@ -359,7 +322,6 @@ class People(SinaBaseObject):
                     repost_count = int(re.findall(pattern, i.div.find_all('a')[-3].get_text())[0])
                     comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-2].get_text())[0])
                 except IndexError:
-                    print(weibo_uid)
                     try:
                         comment_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-3].get_text())[0])
                         repost_count = int(re.findall(pattern, i.find_all('div')[-1].find_all('a')[-4].get_text())[0])
@@ -368,18 +330,17 @@ class People(SinaBaseObject):
                         attitude_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[0])
                         repost_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[1])
                         comment_count = int(re.findall(pattern, i.find_all('div')[-1].get_text())[2])
-                        print(attitude_count, repost_count, comment_count)
+                        # print(attitude_count, repost_count, comment_count)
                 try:
                     time = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[0]
                     terminal_source = i.div.find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[1]
                 except IndexError:
-                    print(i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text())
                     time = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[0]
                     try:
                         terminal_source = i.find_all('div')[-1].find_all('span', attrs={'class': 'ct'})[0].get_text().split('来自')[1]
                     except IndexError:
                         terminal_source = '暂无'
-                print(time, terminal_source)
+                # print(time, terminal_source)
                 weibo_cache = {
                     "is_repost": is_repost,
                     "text": text,
@@ -389,8 +350,6 @@ class People(SinaBaseObject):
                     "time": time,
                     "terminal_source": terminal_source
                 }
-                print(5555555555555555555555555555555)
-                print(weibo_uid)
                 self.now_weibo_cache = weibo_cache
                 self.now_weibo_uid = weibo_uid
                 yield weibo.Weibo(id=weibo_uid, cache=weibo_cache)
@@ -403,7 +362,6 @@ class People(SinaBaseObject):
                     page_count = requests_content.find(attrs={'id': 'pagelist'}).form.div.contents[-1].strip()
                     page_count = page_count.split('/')[1]
                     page_count = int(re.findall(pattern, page_count)[0])
-                    print(page_count)
                 else:
                     return
                 is_first = False
