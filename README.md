@@ -19,7 +19,7 @@
 
     myclient = WeiboClient(cookies)
 
-    people_1 = myclient('1884866222')  #某目标用户的uid
+    people_1 = myclient.people('1884866222')  #某目标用户的uid
 
     print(people_1.name)    #打印people_1的用户名
 
